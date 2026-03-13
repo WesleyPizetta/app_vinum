@@ -1,10 +1,66 @@
 import 'package:essentials/essentials.dart';
 
 import '../../feature/home/presentation/bloc/home_bloc.dart';
+import '../../feature/wine/data/datasource/wine_datasource.dart';
+import '../../feature/wine/data/datasource/wine_mock_datasource.dart';
+import '../../feature/wine/data/repository/wine_repository_impl.dart';
+import '../../feature/wine/domain/repository/wine_repository.dart';
+import '../../feature/wine/domain/usecase/get_wine_by_id.dart';
+import '../../feature/wine/domain/usecase/get_wines.dart';
+import '../../feature/wine/presentation/bloc/wine_detail_bloc.dart';
+import '../../feature/wine/presentation/bloc/wine_list_bloc.dart';
+
+// TODO: Descomentar quando a API real estiver disponível
+// import '../../feature/wine/data/api/wine_api_service.dart';
+// import '../../feature/wine/data/datasource/wine_remote_datasource.dart';
 
 class VinumContainer {
   static void setup() {
-    // BLoCs
+    // ── Chopper HTTP Client ──
+    // TODO: Configurar a URL base real da API
+    // ApplicationContainer.registerLazySingleton<ChopperClient>(
+    //   () => createChopperClient(
+    //     baseUrl: 'https://api.vinum.com/v1',
+    //     services: [WineApiService.create()],
+    //   ),
+    // );
+
+    // ── API Services (Chopper) ──
+    // TODO: Descomentar quando ChopperClient estiver registrado
+    // ApplicationContainer.registerLazySingleton<WineApiService>(
+    //   () => ApplicationContainer.resolve<ChopperClient>()
+    //       .getService<WineApiService>(),
+    // );
+
+    // ── Datasources ──
+    // TODO: Trocar WineMockDatasource por WineRemoteDatasource para dados reais:
+    // ApplicationContainer.registerLazySingleton<WineDatasource>(
+    //   () => WineRemoteDatasource(ApplicationContainer.resolve<WineApiService>()),
+    // );
+    ApplicationContainer.registerLazySingleton<WineDatasource>(
+      () => WineMockDatasource(),
+    );
+
+    // ── Repositories ──
+    ApplicationContainer.registerLazySingleton<WineRepository>(
+      () => WineRepositoryImpl(ApplicationContainer.resolve<WineDatasource>()),
+    );
+
+    // ── UseCases ──
+    ApplicationContainer.registerLazySingleton<GetWines>(
+      () => GetWines(ApplicationContainer.resolve<WineRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<GetWineById>(
+      () => GetWineById(ApplicationContainer.resolve<WineRepository>()),
+    );
+
+    // ── BLoCs ──
     ApplicationContainer.registerFactory<HomeBloc>(() => HomeBloc());
+    ApplicationContainer.registerFactory<WineListBloc>(
+      () => WineListBloc(ApplicationContainer.resolve<GetWines>()),
+    );
+    ApplicationContainer.registerFactory<WineDetailBloc>(
+      () => WineDetailBloc(ApplicationContainer.resolve<GetWineById>()),
+    );
   }
 }

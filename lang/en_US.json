@@ -6,5 +6,8 @@
   "error_generic": "An error occurred. Please try again.",
   "retry": "Retry",
   "welcome": "Welcome to Vinum",
-  "welcome_subtitle": "Your wine app"
+  "welcome_subtitle": "Your wine app",
+  "wine_catalog": "Wine Catalog",
+  "wine_description": "Description",
+  "explore_wines": "Explore wines"
 }

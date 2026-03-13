@@ -24,7 +24,7 @@ dependencies:
   dartz: ^0.10.1
 
   # HTTP
-  dio: ^5.7.0
+  chopper: ^8.0.0
 
   # Utils
   intl: any

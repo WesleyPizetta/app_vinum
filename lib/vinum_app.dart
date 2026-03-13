@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'core/navigation/application_route.dart';
 import 'feature/home/presentation/page/home_page.dart';
 import 'feature/settings/presentation/page/settings_page.dart';
+import 'feature/wine/presentation/page/wine_detail_page.dart';
+import 'feature/wine/presentation/page/wine_list_page.dart';
 
 class VinumApp extends StatelessWidget {
   const VinumApp({super.key});
@@ -33,6 +35,8 @@ class VinumApp extends StatelessWidget {
       routes: {
         ApplicationRoute.home: (_) => const HomePage(),
         ApplicationRoute.settings: (_) => const SettingsPage(),
+        ApplicationRoute.wineList: (_) => const WineListPage(),
+        ApplicationRoute.wineDetail: (_) => const WineDetailPage(),
       },
     );
   }
