@@ -82,6 +82,12 @@ class _HomeContent extends StatelessWidget {
           ),
           const SizedBox(height: Dimens.spacing48),
           PrimaryButton(
+            text: getString(context, 'explore_wines'),
+            onPressed: () =>
+                Navigator.pushNamed(context, ApplicationRoute.wineList),
+          ),
+          const SizedBox(height: Dimens.spacing12),
+          SecondaryButton(
             text: getString(context, 'settings'),
             onPressed: () =>
                 Navigator.pushNamed(context, ApplicationRoute.settings),
