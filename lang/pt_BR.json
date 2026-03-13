@@ -1,0 +1,10 @@
+{
+  "app_name": "Vinum",
+  "home": "Início",
+  "settings": "Configurações",
+  "loading": "Carregando...",
+  "error_generic": "Ocorreu um erro. Tente novamente.",
+  "retry": "Tentar novamente",
+  "welcome": "Bem-vindo ao Vinum",
+  "welcome_subtitle": "Seu app de vinhos"
+}
