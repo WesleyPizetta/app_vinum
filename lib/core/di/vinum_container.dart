@@ -1,5 +1,11 @@
 import 'package:essentials/essentials.dart';
 
+import '../../feature/auth/data/repository/auth_repository_impl.dart';
+import '../../feature/auth/domain/repository/auth_repository.dart';
+import '../../feature/auth/domain/usecase/sign_in.dart';
+import '../../feature/auth/domain/usecase/sign_up.dart';
+import '../../feature/auth/presentation/bloc/login_bloc.dart';
+import '../../feature/auth/presentation/bloc/register_bloc.dart';
 import '../../feature/home/presentation/bloc/home_bloc.dart';
 import '../../feature/wine/data/datasource/wine_datasource.dart';
 import '../../feature/wine/data/datasource/wine_mock_datasource.dart';
@@ -16,6 +22,26 @@ import '../../feature/wine/presentation/bloc/wine_list_bloc.dart';
 
 class VinumContainer {
   static void setup() {
+    // ── Auth ──
+    ApplicationContainer.registerLazySingleton<AuthRepository>(
+      () => AuthRepositoryImpl(),
+    );
+    ApplicationContainer.registerLazySingleton<SignIn>(
+      () => SignIn(ApplicationContainer.resolve<AuthRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<SignUp>(
+      () => SignUp(ApplicationContainer.resolve<AuthRepository>()),
+    );
+    ApplicationContainer.registerFactory<LoginBloc>(
+      () => LoginBloc(
+        ApplicationContainer.resolve<SignIn>(),
+        ApplicationContainer.resolve<AuthRepository>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<RegisterBloc>(
+      () => RegisterBloc(ApplicationContainer.resolve<SignUp>()),
+    );
+
     // ── Chopper HTTP Client ──
     // TODO: Configurar a URL base real da API
     // ApplicationContainer.registerLazySingleton<ChopperClient>(
