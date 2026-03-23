@@ -25,6 +25,7 @@
   "auth_error_email_not_confirmed": "Please confirm your email before signing in.",
   "auth_error_email_in_use": "This email is already registered.",
   "auth_error_weak_password": "Password must be at least 6 characters.",
+  "auth_error_social_login_failed": "Social login failed. Please try again.",
   "auth_error_email_required": "Please enter your email.",
   "auth_error_password_required": "Please enter your password.",
   "auth_error_name_required": "Please enter your name."

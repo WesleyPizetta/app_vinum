@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.vinum.vinum"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

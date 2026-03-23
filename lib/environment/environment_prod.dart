@@ -1,10 +1,11 @@
 import 'package:essentials/essentials.dart';
 
 class ProdEnvironment extends Environment {
-  ProdEnvironment()
+  ProdEnvironment({String? apiUrl, String? googleWebClientId})
       : super(
           isProduction: true,
-          apiUrl: 'https://api.vinum.com',
+          apiUrl: apiUrl ?? 'https://api.vinum.com',
           name: 'PROD',
+          googleWebClientId: googleWebClientId ?? '',
         );
 }

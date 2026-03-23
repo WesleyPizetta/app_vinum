@@ -8,3 +8,15 @@ class LoginSubmitted extends LoginEvent {
 
   LoginSubmitted({required this.email, required this.password});
 }
+
+class LoginSocialSubmitted extends LoginEvent {
+  final String provider;
+  final String idToken;
+  final String? nonce;
+
+  LoginSocialSubmitted({
+    required this.provider,
+    required this.idToken,
+    this.nonce,
+  });
+}

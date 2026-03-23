@@ -25,6 +25,7 @@
   "auth_error_email_not_confirmed": "Confirme seu e-mail antes de entrar.",
   "auth_error_email_in_use": "Este e-mail já está cadastrado.",
   "auth_error_weak_password": "A senha deve ter pelo menos 6 caracteres.",
+  "auth_error_social_login_failed": "Falha no login social. Tente novamente.",
   "auth_error_email_required": "Informe o e-mail.",
   "auth_error_password_required": "Informe a senha.",
   "auth_error_name_required": "Informe o nome."

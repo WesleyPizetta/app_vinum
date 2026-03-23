@@ -17,7 +17,12 @@ Future<void> main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
-  ApplicationContainer.registerSingleton<Environment>(DevEnvironment());
+  ApplicationContainer.registerSingleton<Environment>(
+    DevEnvironment(
+      apiUrl: dotenv.env['BFF_API_URL'],
+      googleWebClientId: dotenv.env['GOOGLE_WEB_CLIENT_ID'],
+    ),
+  );
   VinumContainer.setup();
 
   runApp(const VinumApp());

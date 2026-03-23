@@ -1,11 +1,21 @@
 import 'package:essentials/essentials.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
+import '../api/auth_api_service.dart';
 import '../../domain/entity/user.dart';
 import '../../domain/repository/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
+  AuthRepositoryImpl({required AuthApiService authService})
+      : _authService = authService;
+
   final supa.SupabaseClient _client = supa.Supabase.instance.client;
+  final AuthApiService _authService;
+
+  User? _currentUser;
+  String? _accessToken;
+  String? _refreshToken;
 
   @override
   Future<Try<User>> signIn({
@@ -21,12 +31,65 @@ class AuthRepositoryImpl implements AuthRepository {
       if (supaUser == null) {
         return Try.reject(KnownFailure('INVALID_CREDENTIALS', null));
       }
-      return Try.success(_toUser(supaUser));
+      final user = _toUser(supaUser);
+      _currentUser = user;
+      return Try.success(user);
     } on supa.AuthException catch (e) {
       return Try.reject(
         KnownFailure(e.statusCode ?? 'AUTH_ERROR', e, message: e.message),
       );
     } catch (e) {
+      return Try.reject(UnknownFailure(e));
+    }
+  }
+
+  @override
+  Future<Try<User>> signInWithSocial({
+    required String provider,
+    required String idToken,
+    String? nonce,
+  }) async {
+    debugPrint('[GoogleBFF] signInWithSocial: provider=$provider');
+    try {
+      final payload = <String, dynamic>{
+        'provider': provider,
+        'id_token': idToken,
+        if (nonce != null && nonce.trim().isNotEmpty) 'nonce': nonce,
+      };
+      debugPrint('[GoogleBFF] payload keys: ${payload.keys.join(', ')}');
+
+      final response = await _authService.socialExchange(payload);
+      debugPrint('[GoogleBFF] resposta: status=${response.statusCode}  body=${response.body}');
+
+      if (!response.isSuccessful) {
+        debugPrint('[GoogleBFF] ERRO: status ${response.statusCode}  error=${response.error}');
+        return Try.reject(KnownFailure('AUTH_ERROR', response.error,
+            message: 'BFF returned ${response.statusCode}'));
+      }
+
+      final responseBody = response.body as Map<String, dynamic>?;
+      final userMap = responseBody?['user'] as Map<String, dynamic>?;
+      if (userMap == null) {
+        debugPrint('[GoogleBFF] ERRO: campo "user" ausente na resposta');
+        return Try.reject(KnownFailure('AUTH_ERROR', null));
+      }
+
+      _accessToken = responseBody?['access_token'] as String?;
+      _refreshToken = responseBody?['refresh_token'] as String?;
+      debugPrint('[GoogleBFF] access_token ${_accessToken == null ? 'NULL' : 'recebido'}  refresh_token ${_refreshToken == null ? 'NULL' : 'recebido'}');
+
+      final user = User(
+        id: (userMap['id'] as String?) ?? '',
+        email: (userMap['email'] as String?) ?? '',
+        name: (userMap['name'] as String?) ??
+            (userMap['full_name'] as String?) ??
+            (userMap['email'] as String?),
+      );
+      _currentUser = user;
+      debugPrint('[GoogleBFF] usuário criado: id=${user.id}  email=${user.email}');
+      return Try.success(user);
+    } catch (e, st) {
+      debugPrint('[GoogleBFF] ERRO inesperado em signInWithSocial: $e\n$st');
       return Try.reject(UnknownFailure(e));
     }
   }
@@ -47,7 +110,9 @@ class AuthRepositoryImpl implements AuthRepository {
       if (supaUser == null) {
         return Try.reject(KnownFailure('SIGN_UP_FAILED', null));
       }
-      return Try.success(_toUser(supaUser));
+      final user = _toUser(supaUser);
+      _currentUser = user;
+      return Try.success(user);
     } on supa.AuthException catch (e) {
       return Try.reject(
         KnownFailure(e.statusCode ?? 'AUTH_ERROR', e, message: e.message),
@@ -58,10 +123,58 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Try<void>> refreshSession() async {
+    final refreshToken = _refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      return Try.reject(KnownFailure('MISSING_REFRESH_TOKEN', null));
+    }
+
+    try {
+      final response = await _authService.refresh(
+        <String, dynamic>{'refresh_token': refreshToken},
+      );
+      if (!response.isSuccessful) {
+        return Try.reject(KnownFailure('AUTH_ERROR', response.error,
+            message: 'BFF returned ${response.statusCode}'));
+      }
+      final responseBody = response.body as Map<String, dynamic>?;
+      _accessToken = responseBody?['access_token'] as String?;
+      _refreshToken = responseBody?['refresh_token'] as String? ?? refreshToken;
+      return Try.success(null);
+    } catch (e) {
+      return Try.reject(UnknownFailure(e));
+    }
+  }
+
+  @override
+  Future<Try<void>> logout() async {
+    final accessToken = _accessToken;
+    try {
+      if (accessToken != null && accessToken.isNotEmpty) {
+        await _authService.logout(
+          const <String, dynamic>{},
+          authorization: 'Bearer $accessToken',
+        );
+      }
+      await _client.auth.signOut();
+      _accessToken = null;
+      _refreshToken = null;
+      _currentUser = null;
+      return Try.success(null);
+    } catch (e) {
+      return Try.reject(UnknownFailure(e));
+    }
+  }
+
+  @override
   User? getCurrentUser() {
+    if (_currentUser != null) {
+      return _currentUser;
+    }
     final supaUser = _client.auth.currentUser;
     if (supaUser == null) return null;
-    return _toUser(supaUser);
+    _currentUser = _toUser(supaUser);
+    return _currentUser;
   }
 
   User _toUser(supa.User supaUser) {

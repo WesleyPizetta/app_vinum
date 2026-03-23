@@ -1,5 +1,6 @@
 import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/navigation/application_route.dart';
 import '../bloc/login_bloc.dart';
@@ -151,6 +152,18 @@ class _LoginFormState extends State<_LoginForm> {
                 onPressed: () => _submit(context),
               ),
             ),
+            const SizedBox(height: Dimens.spacing12),
+            OutlinedButton.icon(
+              onPressed: () => _socialLogin(context, provider: 'google'),
+              icon: const Icon(Icons.g_mobiledata),
+              label: const Text('Google via BFF'),
+            ),
+            const SizedBox(height: Dimens.spacing8),
+            OutlinedButton.icon(
+              onPressed: () => _socialLogin(context, provider: 'apple'),
+              icon: const Icon(Icons.apple),
+              label: const Text('Apple via BFF'),
+            ),
             const SizedBox(height: Dimens.spacing16),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -182,5 +195,53 @@ class _LoginFormState extends State<_LoginForm> {
             password: _passwordController.text,
           ),
         );
+  }
+
+  Future<void> _socialLogin(
+    BuildContext context, {
+    required String provider,
+  }) async {
+    if (provider == 'google') {
+      await _signInWithGoogle(context);
+      return;
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Apple Sign-In em breve')),
+    );
+  }
+
+  Future<void> _signInWithGoogle(BuildContext context) async {
+    debugPrint('[GoogleBFF] _signInWithGoogle: iniciando fluxo');
+    final env = ApplicationContainer.resolve<Environment>();
+    debugPrint('[GoogleBFF] apiUrl=${env.apiUrl}  googleWebClientId=${env.googleWebClientId.isEmpty ? '<vazio>' : env.googleWebClientId}');
+    final googleSignIn = GoogleSignIn(
+      serverClientId: env.googleWebClientId.isNotEmpty
+          ? env.googleWebClientId
+          : null,
+    );
+    try {
+      debugPrint('[GoogleBFF] chamando googleSignIn.signIn()...');
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        debugPrint('[GoogleBFF] usuário cancelou o Google Sign-In');
+        return;
+      }
+      debugPrint('[GoogleBFF] conta obtida: ${account.email}');
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      debugPrint('[GoogleBFF] idToken ${idToken == null ? 'é NULL' : 'obtido (${idToken.length} chars)'}');
+      if (idToken == null || !context.mounted) return;
+      debugPrint('[GoogleBFF] disparando LoginSocialSubmitted ao Bloc');
+      context.read<LoginBloc>().add(
+            LoginSocialSubmitted(provider: 'google', idToken: idToken),
+          );
+    } catch (e, st) {
+      debugPrint('[GoogleBFF] ERRO em _signInWithGoogle: $e\n$st');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Falha ao iniciar Google Sign-In')),
+      );
+    }
   }
 }

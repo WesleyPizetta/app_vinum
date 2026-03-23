@@ -1,5 +1,6 @@
 import 'package:essentials/essentials.dart';
 
+import '../../feature/auth/data/api/auth_api_service.dart';
 import '../../feature/auth/data/repository/auth_repository_impl.dart';
 import '../../feature/auth/domain/repository/auth_repository.dart';
 import '../../feature/auth/domain/usecase/sign_in.dart';
@@ -22,9 +23,28 @@ import '../../feature/wine/presentation/bloc/wine_list_bloc.dart';
 
 class VinumContainer {
   static void setup() {
+    // ── Chopper HTTP Client (BFF) ──
+    ApplicationContainer.registerLazySingleton<ChopperClient>(
+      () => createChopperClient(
+        baseUrl: ApplicationContainer.resolve<Environment>().apiUrl,
+        services: [
+          AuthApiService.create(),
+          // WineApiService.create(), // descomentar quando API real estiver pronta
+        ],
+      ),
+    );
+
+    // ── API Services (Chopper) ──
+    ApplicationContainer.registerLazySingleton<AuthApiService>(
+      () => ApplicationContainer.resolve<ChopperClient>()
+          .getService<AuthApiService>(),
+    );
+
     // ── Auth ──
     ApplicationContainer.registerLazySingleton<AuthRepository>(
-      () => AuthRepositoryImpl(),
+      () => AuthRepositoryImpl(
+        authService: ApplicationContainer.resolve<AuthApiService>(),
+      ),
     );
     ApplicationContainer.registerLazySingleton<SignIn>(
       () => SignIn(ApplicationContainer.resolve<AuthRepository>()),
@@ -42,17 +62,8 @@ class VinumContainer {
       () => RegisterBloc(ApplicationContainer.resolve<SignUp>()),
     );
 
-    // ── Chopper HTTP Client ──
-    // TODO: Configurar a URL base real da API
-    // ApplicationContainer.registerLazySingleton<ChopperClient>(
-    //   () => createChopperClient(
-    //     baseUrl: 'https://api.vinum.com/v1',
-    //     services: [WineApiService.create()],
-    //   ),
-    // );
-
-    // ── API Services (Chopper) ──
-    // TODO: Descomentar quando ChopperClient estiver registrado
+    // ── Chopper WineApiService ──
+    // TODO: Descomentar quando a API real estiver disponível
     // ApplicationContainer.registerLazySingleton<WineApiService>(
     //   () => ApplicationContainer.resolve<ChopperClient>()
     //       .getService<WineApiService>(),
