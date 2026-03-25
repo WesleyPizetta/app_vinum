@@ -38,9 +38,9 @@ jobs:
       - name: Create empty .env file
         run: touch .env
 
-      # 5. Recria o google-services.json a partir do secret
+      # 5. Recria o google-services.json a partir do secret (base64)
       - name: Create google-services.json
-        run: printf '%s' "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
 
       # 6. Recria o strings.xml (Client ID do Google Sign-In)
       - name: Create strings.xml
