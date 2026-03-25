@@ -30,21 +30,30 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. Recria o .env.prod a partir do secret (nunca commitado)
+      # 4. Recria o .env.prod a partir do secret (texto bruto)
       - name: Create .env.prod file
-        run: printf '%s' "${{ secrets.ENV_FILE_PROD }}" > .env.prod
+        run: |
+          cat << 'EOF' > .env.prod
+          ${{ secrets.ENV_FILE_PROD }}
+          EOF
 
       # .env é um asset obrigatório no pubspec.yaml — cria vazio para o build não falhar
       - name: Create empty .env file
         run: touch .env
 
-      # 5. Recria o google-services.json a partir do secret (base64)
+      # 5. Recria o google-services.json a partir do secret (texto bruto)
       - name: Create google-services.json
-        run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
+        run: |
+          cat << 'EOF' > android/app/google-services.json
+          ${{ secrets.GOOGLE_SERVICES_JSON }}
+          EOF
 
-      # 6. Recria o strings.xml (Client ID do Google Sign-In, base64)
+      # 6. Recria o strings.xml a partir do secret (texto bruto)
       - name: Create strings.xml
-        run: echo "${{ secrets.ANDROID_STRINGS_XML }}" | base64 --decode > android/app/src/main/res/values/strings.xml
+        run: |
+          cat << 'EOF' > android/app/src/main/res/values/strings.xml
+          ${{ secrets.ANDROID_STRINGS_XML }}
+          EOF
 
       # 7. Instala as dependências
       - name: Install dependencies
@@ -54,19 +63,15 @@ jobs:
       - name: Build APK (prod)
         run: flutter build apk --release --flavor prod -t lib/main_prod.dart
 
-      # 9. Decodifica o service account e envia para o Firebase App Distribution
-      - name: Decode Firebase service account
-        run: echo "${{ secrets.FIREBASE_SERVICE_CREDENTIALS }}" | base64 --decode > /tmp/firebase-service-account.json
-
+      # 9. Envia para o Firebase App Distribution
       - name: Upload to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_PROD }}
-          serviceCredentialsFile: /tmp/firebase-service-account.json
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_CREDENTIALS }}
           groups: testers
           releaseNotes: |
             Branch: main
             Commit: ${{ github.sha }}
             Message: ${{ github.event.head_commit.message }}
           file: build/app/outputs/flutter-apk/app-prod-release.apk
-
