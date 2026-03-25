@@ -1,0 +1,63 @@
+name: Build & Distribute DEV (Firebase App Distribution)
+
+# Dispara quando um PR é aberto ou atualizado contra develop
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build-and-distribute:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Baixa o código
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Java (necessário para o build Android)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. Flutter (stable, compatível com Dart ^3.6.0)
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # 4. Recria o .env a partir do secret (nunca commitado)
+      - name: Create .env file
+        run: echo "${{ secrets.ENV_FILE_DEV }}" > .env
+
+      # 5. Recria o google-services.json a partir do secret
+      - name: Create google-services.json
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
+
+      # 6. Recria o strings.xml (Client ID do Google Sign-In)
+      - name: Create strings.xml
+        run: echo "${{ secrets.ANDROID_STRINGS_XML }}" > android/app/src/main/res/values/strings.xml
+
+      # 7. Instala as dependências
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 8. Gera o APK dev (debug assinado com debug key — adequado para distribuição interna)
+      - name: Build APK (dev)
+        run: flutter build apk --debug --flavor dev -t lib/main_dev.dart
+
+      # 9. Envia para o Firebase App Distribution
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID_DEV }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_CREDENTIALS }}
+          groups: testers
+          releaseNotes: |
+            PR: ${{ github.event.pull_request.title }}
+            Branch: ${{ github.head_ref }}
+            Commit: ${{ github.sha }}
+          file: build/app/outputs/flutter-apk/app-dev-debug.apk

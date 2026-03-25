@@ -45,5 +45,21 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Google Sign-In: iOS Client ID (do Google Cloud Console → OAuth → Tipo iOS) -->
+	<key>GIDClientID</key>
+	<string>713921136102-kt1d9mk07r72h4kt40759cmdpvsd2jmd.apps.googleusercontent.com</string>
+	<!-- Google Sign-In: URL scheme reverso do iOS Client ID para callback OAuth -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Formato: com.googleusercontent.apps.SEU_IOS_CLIENT_ID -->
+				<string>com.googleusercontent.apps.713921136102-kt1d9mk07r72h4kt40759cmdpvsd2jmd</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
