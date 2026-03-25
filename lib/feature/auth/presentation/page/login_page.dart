@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/navigation/application_route.dart';
+import '../../../../core/widgets/app_version_badge.dart';
 import '../bloc/login_bloc.dart';
 import '../bloc/login_event.dart';
 import '../bloc/login_state.dart';
@@ -26,7 +27,18 @@ class LoginPage extends StatelessWidget {
           }
         },
         child: const Scaffold(
-          body: SafeArea(child: _LoginForm()),
+          body: SafeArea(
+            child: Stack(
+              children: [
+                _LoginForm(),
+                Positioned(
+                  top: Dimens.spacing8,
+                  right: Dimens.spacing16,
+                  child: AppVersionBadge(),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -2,6 +2,7 @@ import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/navigation/application_route.dart';
+import '../../../../core/widgets/app_version_badge.dart';
 import '../../../auth/domain/entity/user.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
@@ -103,6 +104,8 @@ class _ProfileContent extends StatelessWidget {
             ),
             child: Text(getString(context, 'end_session')),
           ),
+          const SizedBox(height: Dimens.spacing16),
+          const Center(child: AppVersionBadge()),
           const SizedBox(height: Dimens.spacing24),
         ],
       ),
