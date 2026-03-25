@@ -158,8 +158,11 @@ app_vinum/
 | `.env` | Variáveis de ambiente (Supabase, BFF, Google OAuth) |
 | `android/app/src/main/res/values/strings.xml` | Client ID do Google para o SDK Android |
 | `ios/Runner/GoogleService-Info.plist` | Configuração do Google Sign-In para iOS |
-| `android/app/google-services.json` | Configuração do Firebase (se usado) |
+| `android/app/google-services.json` | Configuração do Firebase |
+| `.env.prod` | Variáveis de ambiente de produção |
 | `key.properties` / `*.keystore` | Chaves de assinatura Android |
+
+> Nenhum desses arquivos está no repositório. Solicite-os ao responsável pelo projeto via canal seguro (nunca por e-mail ou chat público).
 
 ---
 
