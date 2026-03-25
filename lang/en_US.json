@@ -28,5 +28,7 @@
   "auth_error_social_login_failed": "Social login failed. Please try again.",
   "auth_error_email_required": "Please enter your email.",
   "auth_error_password_required": "Please enter your password.",
-  "auth_error_name_required": "Please enter your name."
+  "auth_error_name_required": "Please enter your name.",
+  "profile": "My profile",
+  "end_session": "Sign out"
 }

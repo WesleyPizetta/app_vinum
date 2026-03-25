@@ -5,9 +5,11 @@ import '../../feature/auth/data/repository/auth_repository_impl.dart';
 import '../../feature/auth/domain/repository/auth_repository.dart';
 import '../../feature/auth/domain/usecase/sign_in.dart';
 import '../../feature/auth/domain/usecase/sign_up.dart';
+import '../../feature/auth/domain/usecase/logout.dart';
 import '../../feature/auth/presentation/bloc/login_bloc.dart';
 import '../../feature/auth/presentation/bloc/register_bloc.dart';
 import '../../feature/home/presentation/bloc/home_bloc.dart';
+import '../../feature/profile/presentation/bloc/profile_bloc.dart';
 import '../../feature/wine/data/datasource/wine_datasource.dart';
 import '../../feature/wine/data/datasource/wine_mock_datasource.dart';
 import '../../feature/wine/data/repository/wine_repository_impl.dart';
@@ -52,6 +54,9 @@ class VinumContainer {
     ApplicationContainer.registerLazySingleton<SignUp>(
       () => SignUp(ApplicationContainer.resolve<AuthRepository>()),
     );
+    ApplicationContainer.registerLazySingleton<Logout>(
+      () => Logout(ApplicationContainer.resolve<AuthRepository>()),
+    );
     ApplicationContainer.registerFactory<LoginBloc>(
       () => LoginBloc(
         ApplicationContainer.resolve<SignIn>(),
@@ -60,6 +65,12 @@ class VinumContainer {
     );
     ApplicationContainer.registerFactory<RegisterBloc>(
       () => RegisterBloc(ApplicationContainer.resolve<SignUp>()),
+    );
+    ApplicationContainer.registerFactory<ProfileBloc>(
+      () => ProfileBloc(
+        ApplicationContainer.resolve<AuthRepository>(),
+        ApplicationContainer.resolve<Logout>(),
+      ),
     );
 
     // ── Chopper WineApiService ──
@@ -92,7 +103,9 @@ class VinumContainer {
     );
 
     // ── BLoCs ──
-    ApplicationContainer.registerFactory<HomeBloc>(() => HomeBloc());
+    ApplicationContainer.registerFactory<HomeBloc>(
+      () => HomeBloc(ApplicationContainer.resolve<AuthRepository>()),
+    );
     ApplicationContainer.registerFactory<WineListBloc>(
       () => WineListBloc(ApplicationContainer.resolve<GetWines>()),
     );

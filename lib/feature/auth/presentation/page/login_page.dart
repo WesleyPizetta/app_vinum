@@ -155,14 +155,14 @@ class _LoginFormState extends State<_LoginForm> {
             const SizedBox(height: Dimens.spacing12),
             OutlinedButton.icon(
               onPressed: () => _socialLogin(context, provider: 'google'),
-              icon: const Icon(Icons.g_mobiledata),
-              label: const Text('Google via BFF'),
+              icon: const Icon(Icons.g_mobiledata, size: 28),
+              label: const Text('Google'),
             ),
             const SizedBox(height: Dimens.spacing8),
             OutlinedButton.icon(
               onPressed: () => _socialLogin(context, provider: 'apple'),
-              icon: const Icon(Icons.apple),
-              label: const Text('Apple via BFF'),
+              icon: const Icon(Icons.apple, size: 28),
+              label: const Text('Apple'),
             ),
             const SizedBox(height: Dimens.spacing16),
             Row(
@@ -222,6 +222,7 @@ class _LoginFormState extends State<_LoginForm> {
     );
     try {
       debugPrint('[GoogleBFF] chamando googleSignIn.signIn()...');
+      await googleSignIn.signOut();
       final account = await googleSignIn.signIn();
       if (account == null) {
         debugPrint('[GoogleBFF] usuário cancelou o Google Sign-In');
