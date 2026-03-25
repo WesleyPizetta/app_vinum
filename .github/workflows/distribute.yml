@@ -54,12 +54,12 @@ jobs:
       - name: Build APK (prod)
         run: flutter build apk --release --flavor prod -t lib/main_prod.dart
 
-      # 9. Envia para o Firebase App Distribution
+      # 9. Envia para o Firebase App Distribution usando o CI token
       - name: Upload to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_PROD }}
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_CREDENTIALS }}
+          token: ${{ secrets.FIREBASE_SERVICE_CREDENTIALS }}
           groups: testers
           releaseNotes: |
             Branch: main
