@@ -2,6 +2,7 @@ import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/navigation/application_route.dart';
+import '../../../profile/presentation/widget/user_avatar_button.dart';
 import '../bloc/home_bloc.dart';
 import '../bloc/home_event.dart';
 import '../bloc/home_state.dart';
@@ -19,10 +20,11 @@ class HomePage extends StatelessWidget {
           title: getString(context, 'home'),
           showBackButton: false,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () =>
-                  Navigator.pushNamed(context, ApplicationRoute.settings),
+            BlocBuilder<HomeBloc, HomeState>(
+              builder: (context, state) {
+                final user = state is HomeLoaded ? state.currentUser : null;
+                return UserAvatarButton(user: user);
+              },
             ),
           ],
         ),
@@ -97,3 +99,5 @@ class _HomeContent extends StatelessWidget {
     );
   }
 }
+
+

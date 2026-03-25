@@ -28,5 +28,7 @@
   "auth_error_social_login_failed": "Falha no login social. Tente novamente.",
   "auth_error_email_required": "Informe o e-mail.",
   "auth_error_password_required": "Informe a senha.",
-  "auth_error_name_required": "Informe o nome."
+  "auth_error_name_required": "Informe o nome.",
+  "profile": "Meu perfil",
+  "end_session": "Encerrar sessão"
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/navigation/application_route.dart';
+import '../../../../core/widgets/app_version_badge.dart';
 import '../bloc/login_bloc.dart';
 import '../bloc/login_event.dart';
 import '../bloc/login_state.dart';
@@ -26,7 +27,18 @@ class LoginPage extends StatelessWidget {
           }
         },
         child: const Scaffold(
-          body: SafeArea(child: _LoginForm()),
+          body: SafeArea(
+            child: Stack(
+              children: [
+                _LoginForm(),
+                Positioned(
+                  top: Dimens.spacing8,
+                  right: Dimens.spacing16,
+                  child: AppVersionBadge(),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -155,14 +167,14 @@ class _LoginFormState extends State<_LoginForm> {
             const SizedBox(height: Dimens.spacing12),
             OutlinedButton.icon(
               onPressed: () => _socialLogin(context, provider: 'google'),
-              icon: const Icon(Icons.g_mobiledata),
-              label: const Text('Google via BFF'),
+              icon: const Icon(Icons.g_mobiledata, size: 28),
+              label: const Text('Google'),
             ),
             const SizedBox(height: Dimens.spacing8),
             OutlinedButton.icon(
               onPressed: () => _socialLogin(context, provider: 'apple'),
-              icon: const Icon(Icons.apple),
-              label: const Text('Apple via BFF'),
+              icon: const Icon(Icons.apple, size: 28),
+              label: const Text('Apple'),
             ),
             const SizedBox(height: Dimens.spacing16),
             Row(
@@ -222,6 +234,7 @@ class _LoginFormState extends State<_LoginForm> {
     );
     try {
       debugPrint('[GoogleBFF] chamando googleSignIn.signIn()...');
+      await googleSignIn.signOut();
       final account = await googleSignIn.signIn();
       if (account == null) {
         debugPrint('[GoogleBFF] usuário cancelou o Google Sign-In');
