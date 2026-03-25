@@ -54,12 +54,15 @@ jobs:
       - name: Build APK (prod)
         run: flutter build apk --release --flavor prod -t lib/main_prod.dart
 
-      # 9. Envia para o Firebase App Distribution usando o CI token
+      # 9. Decodifica o service account e envia para o Firebase App Distribution
+      - name: Decode Firebase service account
+        run: echo "${{ secrets.FIREBASE_SERVICE_CREDENTIALS }}" | base64 --decode > /tmp/firebase-service-account.json
+
       - name: Upload to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_PROD }}
-          token: ${{ secrets.FIREBASE_SERVICE_CREDENTIALS }}
+          serviceCredentialsFile: /tmp/firebase-service-account.json
           groups: testers
           releaseNotes: |
             Branch: main
