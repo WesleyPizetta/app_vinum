@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "870367336342",
+    "project_id": "vinum-app-ed553",
+    "storage_bucket": "vinum-app-ed553.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:870367336342:android:4e733c968a93f11d332fb7",
+        "android_client_info": {
+          "package_name": "com.vinum.vinum"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAjRAHQmjNwsiOnDfoWHqPAEceY00vGCBQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

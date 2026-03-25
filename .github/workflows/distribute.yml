@@ -1,0 +1,69 @@
+name: Build & Distribute PROD (Firebase App Distribution)
+
+# Dispara quando develop é mergeado na main
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-distribute:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      # 1. Baixa o código
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Java (necessário para o build Android)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. Flutter (stable, compatível com Dart ^3.6.0)
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # 4. Recria o .env.prod a partir do secret (nunca commitado)
+      - name: Create .env.prod file
+        run: echo "${{ secrets.ENV_FILE_PROD }}" > .env.prod
+
+      # .env é um asset obrigatório no pubspec.yaml — cria vazio para o build não falhar
+      - name: Create empty .env file
+        run: touch .env
+
+      # 5. Recria o google-services.json a partir do secret
+      - name: Create google-services.json
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
+
+      # 6. Recria o strings.xml (Client ID do Google Sign-In)
+      - name: Create strings.xml
+        run: echo "${{ secrets.ANDROID_STRINGS_XML }}" > android/app/src/main/res/values/strings.xml
+
+      # 7. Instala as dependências
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 8. Gera o APK prod (release com debug signing — adequado para Firebase App Distribution)
+      - name: Build APK (prod)
+        run: flutter build apk --release --flavor prod -t lib/main_prod.dart
+
+      # 9. Envia para o Firebase App Distribution
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID_PROD }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_CREDENTIALS }}
+          groups: testers
+          releaseNotes: |
+            Branch: main
+            Commit: ${{ github.sha }}
+            Message: ${{ github.event.head_commit.message }}
+          file: build/app/outputs/flutter-apk/app-prod-release.apk
+
