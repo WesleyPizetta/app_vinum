@@ -34,6 +34,10 @@ jobs:
       - name: Create .env.prod file
         run: echo "${{ secrets.ENV_FILE_PROD }}" > .env.prod
 
+      # .env é um asset obrigatório no pubspec.yaml — cria vazio para o build não falhar
+      - name: Create empty .env file
+        run: touch .env
+
       # 5. Recria o google-services.json a partir do secret
       - name: Create google-services.json
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
