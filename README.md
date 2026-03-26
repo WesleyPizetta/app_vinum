@@ -81,7 +81,46 @@ Abra o arquivo e substitua `<SEU_WEB_CLIENT_ID>` pelo mesmo valor de `GOOGLE_WEB
 flutter pub get
 ```
 
-### 5. Rode o app
+### 5. Cadastre o SHA-1 do seu debug keystore no Google Cloud Console
+
+O Google Sign-In no Android valida a assinatura do app. Em desenvolvimento, cada máquina tem um **debug keystore próprio** — o SHA-1 dele precisa ser cadastrado no Google Cloud Console. Sem isso, o botão social retorna erro silencioso.
+
+#### 5.1 Gere o debug keystore (se ainda não existir)
+
+O arquivo `debug.keystore` é criado automaticamente pelo Gradle no **primeiro build Android**. Se ainda não existe na sua máquina, gere-o com:
+
+```bash
+flutter build apk --debug
+```
+
+> Após o build terminar, o arquivo estará em `%USERPROFILE%\.android\debug.keystore` (Windows) ou `~/.android/debug.keystore` (Linux/macOS).
+
+#### 5.2 Extraia o SHA-1
+
+```powershell
+# Windows (PowerShell)
+keytool -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
+```
+
+```bash
+# Linux/macOS
+keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+```
+
+Copie o valor exibido na linha `SHA1:`.
+
+#### 5.3 Cadastre no Google Cloud Console
+
+1. Acesse **[Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials**
+2. Clique no OAuth 2.0 Client ID do tipo **Android**
+3. Em **SHA-1 certificate fingerprints**, clique em **Add fingerprint**
+4. Cole o SHA-1 copiado e salve
+
+> Peça ao responsável pelo projeto acesso de editor ao Google Cloud Console caso não tenha permissão.
+
+> **Esse passo é necessário apenas em desenvolvimento.** Em produção, a chave de release tem um SHA-1 único já cadastrado, e os usuários finais não precisam fazer nada.
+
+### 6. Rode o app
 
 ```bash
 # Emulador ou dispositivo conectado (flavor dev)
@@ -119,8 +158,11 @@ app_vinum/
 | `.env` | Variáveis de ambiente (Supabase, BFF, Google OAuth) |
 | `android/app/src/main/res/values/strings.xml` | Client ID do Google para o SDK Android |
 | `ios/Runner/GoogleService-Info.plist` | Configuração do Google Sign-In para iOS |
-| `android/app/google-services.json` | Configuração do Firebase (se usado) |
+| `android/app/google-services.json` | Configuração do Firebase |
+| `.env.prod` | Variáveis de ambiente de produção |
 | `key.properties` / `*.keystore` | Chaves de assinatura Android |
+
+> Nenhum desses arquivos está no repositório. Solicite-os ao responsável pelo projeto via canal seguro (nunca por e-mail ou chat público).
 
 ---
 

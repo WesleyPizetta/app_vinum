@@ -7,4 +7,5 @@ class ApplicationRoute {
   static const String settings = '/settings';
   static const String wineList = '/wines';
   static const String wineDetail = '/wines/detail';
+  static const String me = '/me';
 }

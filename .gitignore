@@ -47,6 +47,7 @@ app.*.map.json
 
 # Segredos — NUNCA commitar
 .env
+.env.prod
 .env.local
 .env.*.local
 
