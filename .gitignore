@@ -58,3 +58,11 @@ android/app/src/main/res/values/strings.xml
 key.properties
 *.keystore
 *.jks
+
+# Google Services (Firebase config - sensível)
+google-services.json
+
+# Arquivos gerados pelo build (iOS/macOS)
+macos/Flutter/GeneratedPluginRegistrant.swift
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
