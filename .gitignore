@@ -32,6 +32,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+pubspec.lock
 
 # Symbolication related
 app.*.symbols
@@ -53,9 +54,20 @@ app.*.map.json
 # Google Sign-In / OAuth secrets
 ios/Runner/GoogleService-Info.plist
 android/app/google-services.json
+
+# Firebase service account (CI/CD)
+firebase-service-account.json
 android/app/src/main/res/values/strings.xml
 
 # Android signing
 key.properties
 *.keystore
 *.jks
+
+# Google Services (Firebase config - sensível)
+google-services.json
+
+# Arquivos gerados pelo build (iOS/macOS)
+macos/Flutter/GeneratedPluginRegistrant.swift
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
