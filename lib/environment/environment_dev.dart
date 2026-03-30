@@ -5,7 +5,7 @@ class DevEnvironment extends Environment {
   DevEnvironment({String? apiUrl, String? googleWebClientId})
       : super(
           isProduction: false,
-          apiUrl: apiUrl ?? 'http://10.0.2.2:8080',
+          apiUrl: apiUrl ?? 'https://api-vinum-bff.onrender.com',
           name: 'DEV',
           googleWebClientId: googleWebClientId ?? '',
         );
