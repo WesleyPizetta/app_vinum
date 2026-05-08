@@ -30,5 +30,17 @@
   "auth_error_password_required": "Informe a senha.",
   "auth_error_name_required": "Informe o nome.",
   "profile": "Meu perfil",
-  "end_session": "Encerrar sessão"
+  "end_session": "Encerrar sessão",
+  "reviews": "Avaliações",
+  "reviews_empty": "Nenhuma avaliação ainda. Seja o primeiro!",
+  "review_add": "Avaliar",
+  "review_edit": "Editar avaliação",
+  "review_delete": "Excluir avaliação",
+  "review_delete_confirm": "Tem certeza que deseja excluir esta avaliação?",
+  "review_nota": "Nota",
+  "review_comentario": "Comentário (opcional)",
+  "review_submit": "Enviar",
+  "review_save": "Salvar",
+  "review_cancel": "Cancelar",
+  "review_you": "Você"
 }
