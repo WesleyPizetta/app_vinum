@@ -54,6 +54,9 @@ app.*.map.json
 # Google Sign-In / OAuth secrets
 ios/Runner/GoogleService-Info.plist
 android/app/google-services.json
+
+# Firebase service account (CI/CD)
+firebase-service-account.json
 android/app/src/main/res/values/strings.xml
 
 # Android signing
