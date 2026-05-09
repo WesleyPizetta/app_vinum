@@ -9,6 +9,14 @@ class ReviewRemoteDatasource implements ReviewDatasource {
 
   const ReviewRemoteDatasource(this._apiService);
 
+  String _toAuthorization(String token) {
+    final normalized = token.trim();
+    if (normalized.toLowerCase().startsWith('bearer ')) {
+      return normalized;
+    }
+    return 'Bearer $normalized';
+  }
+
   @override
   Future<List<ReviewTagOption>> getTags() async {
     final response = await _apiService.getTags();
@@ -51,7 +59,7 @@ class ReviewRemoteDatasource implements ReviewDatasource {
     final response = await _apiService.createReview(
       wineId,
       body,
-      authorization: 'Bearer $token',
+      authorization: _toAuthorization(token),
     );
     if (response.isSuccessful && response.body != null) {
       return ReviewModel.fromJson(response.body as Map<String, dynamic>);
@@ -75,7 +83,7 @@ class ReviewRemoteDatasource implements ReviewDatasource {
     final response = await _apiService.updateReview(
       id,
       body,
-      authorization: 'Bearer $token',
+      authorization: _toAuthorization(token),
     );
     if (response.isSuccessful && response.body != null) {
       return ReviewModel.fromJson(response.body as Map<String, dynamic>);
@@ -87,7 +95,7 @@ class ReviewRemoteDatasource implements ReviewDatasource {
   Future<void> deleteReview({required String id, required String token}) async {
     final response = await _apiService.deleteReview(
       id,
-      authorization: 'Bearer $token',
+      authorization: _toAuthorization(token),
     );
     if (!response.isSuccessful) {
       throw Exception('Falha ao excluir avaliação: ${response.statusCode}');
