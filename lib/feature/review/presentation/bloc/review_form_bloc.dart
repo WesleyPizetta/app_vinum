@@ -31,7 +31,7 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
     final result = await _getReviewTags(null);
 
     result.fold(
-      (failure) => emit(ReviewFormError(message: failure.toString())),
+      (failure) => emit(ReviewFormError(message: _mapTagsFailure(failure))),
       (tags) => emit(ReviewFormTagsLoaded(tags: tags)),
     );
   }
@@ -51,7 +51,7 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
         token: event.token,
       ));
       result.fold(
-        (failure) => emit(ReviewFormError(message: failure.toString())),
+        (failure) => emit(ReviewFormError(message: _mapSubmitFailure(failure))),
         (_) => emit(ReviewFormSuccess()),
       );
     } else {
@@ -63,7 +63,7 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
         token: event.token,
       ));
       result.fold(
-        (failure) => emit(ReviewFormError(message: failure.toString())),
+        (failure) => emit(ReviewFormError(message: _mapSubmitFailure(failure))),
         (_) => emit(ReviewFormSuccess()),
       );
     }
@@ -80,8 +80,44 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
     );
 
     result.fold(
-      (failure) => emit(ReviewFormError(message: failure.toString())),
+      (failure) => emit(ReviewFormError(message: _mapDeleteFailure(failure))),
       (_) => emit(ReviewFormSuccess()),
     );
+  }
+
+  String _mapSubmitFailure(Failure failure) {
+    if (failure is KnownFailure) {
+      final message = (failure.message ?? '').toLowerCase();
+      if (message.contains('invalid') ||
+          message.contains('input') ||
+          message.contains('nota') ||
+          message.contains('wine_id')) {
+        return 'Não foi possível enviar sua avaliação. Verifique os dados e tente novamente.';
+      }
+    }
+
+    return 'Oops, parece que não foi possível enviar sua avaliação. Tente novamente';
+  }
+
+  String _mapDeleteFailure(Failure failure) {
+    if (failure is KnownFailure) {
+      final message = (failure.message ?? '').toLowerCase();
+      if (message.contains('forbidden') || message.contains('unauthorized')) {
+        return 'Você não tem permissão para excluir esta avaliação.';
+      }
+    }
+
+    return 'Oops, parece que não foi possível excluir sua avaliação. Tente novamente';
+  }
+
+  String _mapTagsFailure(Failure failure) {
+    if (failure is KnownFailure) {
+      final message = (failure.message ?? '').toLowerCase();
+      if (message.contains('unauthorized')) {
+        return 'Sua sessão expirou. Faça login novamente para continuar.';
+      }
+    }
+
+    return 'Oops, parece que não foi possível carregar as tags. Tente novamente';
   }
 }

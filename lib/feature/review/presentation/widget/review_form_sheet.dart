@@ -117,7 +117,7 @@ class _ReviewFormSheetState extends State<_ReviewFormSheet> {
         }
         if (state is ReviewFormError) {
           final message = state.message.trim().isEmpty
-              ? 'Nao foi possivel enviar sua avaliacao.'
+              ? 'Oops, parece que não foi possível enviar sua avaliação. Tente novamente'
               : state.message;
 
           showVinumErrorModal(context, message: message);
