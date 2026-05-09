@@ -54,22 +54,36 @@ class _WineDetailPageContent extends StatelessWidget {
 
     return BlocListener<ReviewFormBloc, ReviewFormState>(
       listener: (context, state) {
-        if (state is ReviewFormSuccess) {
-          if (state.review != null) {
-            context
-                .read<ReviewListBloc>()
-                .add(ReviewListUpserted(review: state.review!));
-            return;
-          }
+        if (state is ReviewFormLoading &&
+            state.operation == ReviewFormOperation.delete) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(
+                duration: Duration(days: 1),
+                content: Text('Excluindo avaliação...'),
+              ),
+            );
+          return;
+        }
 
-          if (state.deletedReviewId != null) {
-            context
-                .read<ReviewListBloc>()
-                .add(ReviewListRemoved(reviewId: state.deletedReviewId!));
-            return;
+        if (state is ReviewFormSuccess) {
+          if (state.operation == ReviewFormOperation.delete) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            showVinumSuccessModal(
+              context,
+              message: 'Avaliação excluída com sucesso!',
+            );
           }
 
           context.read<ReviewListBloc>().add(ReviewListStarted(wineId: wineId));
+          return;
+        }
+
+        if (state is ReviewFormError &&
+            state.operation == ReviewFormOperation.delete) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          showVinumErrorModal(context, message: state.message);
         }
       },
       child: Scaffold(
