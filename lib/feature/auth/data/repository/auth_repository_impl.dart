@@ -177,6 +177,14 @@ class AuthRepositoryImpl implements AuthRepository {
     return _currentUser;
   }
 
+  @override
+  String? getAccessToken() {
+    if (_accessToken != null && _accessToken!.isNotEmpty) {
+      return _accessToken;
+    }
+    return _client.auth.currentSession?.accessToken;
+  }
+
   User _toUser(supa.User supaUser) {
     return User(
       id: supaUser.id,

@@ -1,6 +1,14 @@
 import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../feature/auth/domain/repository/auth_repository.dart';
+import '../../../../feature/review/presentation/bloc/review_form_bloc.dart';
+import '../../../../feature/review/presentation/bloc/review_form_state.dart';
+import '../../../../feature/review/presentation/bloc/review_list_bloc.dart';
+import '../../../../feature/review/presentation/bloc/review_list_event.dart';
+import '../../../../feature/review/presentation/bloc/review_list_state.dart';
+import '../../../../feature/review/presentation/widget/review_card.dart';
+import '../../../../feature/review/presentation/widget/review_form_sheet.dart';
 import '../../domain/entity/wine.dart';
 import '../bloc/wine_detail_bloc.dart';
 import '../bloc/wine_detail_event.dart';
@@ -13,16 +21,54 @@ class WineDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final wineId = ModalRoute.of(context)!.settings.arguments as String;
 
-    return BlocProvider(
-      create: (_) => ApplicationContainer.resolve<WineDetailBloc>()
-        ..add(WineDetailStarted(wineId: wineId)),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => ApplicationContainer.resolve<WineDetailBloc>()
+            ..add(WineDetailStarted(wineId: wineId)),
+        ),
+        BlocProvider(
+          create: (_) => ApplicationContainer.resolve<ReviewListBloc>()
+            ..add(ReviewListStarted(wineId: wineId)),
+        ),
+        BlocProvider(
+          create: (_) => ApplicationContainer.resolve<ReviewFormBloc>(),
+        ),
+      ],
+      child: _WineDetailPageContent(wineId: wineId),
+    );
+  }
+}
+
+class _WineDetailPageContent extends StatelessWidget {
+  final String wineId;
+
+  const _WineDetailPageContent({required this.wineId});
+
+  @override
+  Widget build(BuildContext context) {
+    final authRepo = ApplicationContainer.resolve<AuthRepository>();
+    final currentUser = authRepo.getCurrentUser();
+    final token = authRepo.getAccessToken();
+
+    return BlocListener<ReviewFormBloc, ReviewFormState>(
+      listener: (context, state) {
+        if (state is ReviewFormSuccess) {
+          context.read<ReviewListBloc>().add(ReviewListStarted(wineId: wineId));
+        }
+      },
       child: Scaffold(
         body: BlocBuilder<WineDetailBloc, WineDetailState>(
           builder: (context, state) {
             return switch (state) {
               WineDetailInitial() => const SizedBox.shrink(),
               WineDetailLoading() => const LoadingWidget(),
-              WineDetailLoaded(:final wine) => _WineDetailContent(wine: wine),
+              WineDetailLoaded(:final wine) => _WineDetailContent(
+                  wine: wine,
+                  wineId: wineId,
+                  currentUserId: currentUser?.id,
+                  token: token,
+                ),
               WineDetailError(:final message) => VinumErrorWidget(
                   message: message,
                   onRetry: () => context
@@ -32,6 +78,16 @@ class WineDetailPage extends StatelessWidget {
             };
           },
         ),
+        floatingActionButton: token != null && currentUser != null
+            ? FloatingActionButton(
+                onPressed: () => showReviewFormSheet(
+                  context,
+                  wineId: wineId,
+                  token: token,
+                ),
+                child: const Icon(Icons.rate_review_outlined),
+              )
+            : null,
       ),
     );
   }
@@ -39,8 +95,16 @@ class WineDetailPage extends StatelessWidget {
 
 class _WineDetailContent extends StatelessWidget {
   final Wine wine;
+  final String wineId;
+  final String? currentUserId;
+  final String? token;
 
-  const _WineDetailContent({required this.wine});
+  const _WineDetailContent({
+    required this.wine,
+    required this.wineId,
+    this.currentUserId,
+    this.token,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -90,18 +154,12 @@ class _WineDetailContent extends StatelessWidget {
                 spacing: Dimens.spacing8,
                 runSpacing: Dimens.spacing8,
                 children: [
+                  _InfoChip(icon: Icons.grass, label: wine.grape),
                   _InfoChip(
-                    icon: Icons.grass,
-                    label: wine.grape,
-                  ),
+                      icon: Icons.calendar_today, label: '${wine.vintage}'),
                   _InfoChip(
-                    icon: Icons.calendar_today,
-                    label: '${wine.vintage}',
-                  ),
-                  _InfoChip(
-                    icon: Icons.star_rounded,
-                    label: wine.rating.toStringAsFixed(1),
-                  ),
+                      icon: Icons.star_rounded,
+                      label: wine.rating.toStringAsFixed(1)),
                 ],
               ),
               const SizedBox(height: Dimens.spacing24),
@@ -113,10 +171,66 @@ class _WineDetailContent extends StatelessWidget {
               ),
               const SizedBox(height: Dimens.spacing8),
               Text(wine.description, style: theme.textTheme.bodyLarge),
+              const SizedBox(height: Dimens.spacing32),
+
+              // Avaliações
+              Text(
+                getString(context, 'reviews'),
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: Dimens.spacing8),
+              _ReviewsSection(
+                wineId: wineId,
+                currentUserId: currentUserId,
+                token: token,
+              ),
             ]),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ReviewsSection extends StatelessWidget {
+  final String wineId;
+  final String? currentUserId;
+  final String? token;
+
+  const _ReviewsSection({
+    required this.wineId,
+    this.currentUserId,
+    this.token,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ReviewListBloc, ReviewListState>(
+      builder: (context, state) {
+        return switch (state) {
+          ReviewListInitial() ||
+          ReviewListLoading() =>
+            const Center(child: CircularProgressIndicator()),
+          ReviewListError(:final message) => VinumErrorWidget(
+              message: message,
+              onRetry: () => context
+                  .read<ReviewListBloc>()
+                  .add(ReviewListStarted(wineId: wineId)),
+            ),
+          ReviewListLoaded(:final reviews) when reviews.isEmpty =>
+            Text(getString(context, 'reviews_empty')),
+          ReviewListLoaded(:final reviews) => Column(
+              children: reviews
+                  .map((r) => ReviewCard(
+                        review: r,
+                        wineId: wineId,
+                        currentUserId: currentUserId,
+                        currentToken: token,
+                      ))
+                  .toList(),
+            ),
+        };
+      },
     );
   }
 }

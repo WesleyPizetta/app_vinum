@@ -18,6 +18,18 @@ import '../../feature/wine/domain/usecase/get_wine_by_id.dart';
 import '../../feature/wine/domain/usecase/get_wines.dart';
 import '../../feature/wine/presentation/bloc/wine_detail_bloc.dart';
 import '../../feature/wine/presentation/bloc/wine_list_bloc.dart';
+import '../../feature/review/data/api/review_api_service.dart';
+import '../../feature/review/data/datasource/review_datasource.dart';
+import '../../feature/review/data/datasource/review_remote_datasource.dart';
+import '../../feature/review/data/repository/review_repository_impl.dart';
+import '../../feature/review/domain/repository/review_repository.dart';
+import '../../feature/review/domain/usecase/get_wine_reviews.dart';
+import '../../feature/review/domain/usecase/get_review_tags.dart';
+import '../../feature/review/domain/usecase/create_review.dart';
+import '../../feature/review/domain/usecase/update_review.dart';
+import '../../feature/review/domain/usecase/delete_review.dart';
+import '../../feature/review/presentation/bloc/review_list_bloc.dart';
+import '../../feature/review/presentation/bloc/review_form_bloc.dart';
 
 // TODO: Descomentar quando a API real estiver disponível
 // import '../../feature/wine/data/api/wine_api_service.dart';
@@ -31,6 +43,7 @@ class VinumContainer {
         baseUrl: ApplicationContainer.resolve<Environment>().apiUrl,
         services: [
           AuthApiService.create(),
+          ReviewApiService.create(),
           // WineApiService.create(), // descomentar quando API real estiver pronta
         ],
       ),
@@ -102,6 +115,35 @@ class VinumContainer {
       () => GetWineById(ApplicationContainer.resolve<WineRepository>()),
     );
 
+    // ── Reviews ──
+    ApplicationContainer.registerLazySingleton<ReviewApiService>(
+      () => ApplicationContainer.resolve<ChopperClient>()
+          .getService<ReviewApiService>(),
+    );
+    ApplicationContainer.registerLazySingleton<ReviewDatasource>(
+      () => ReviewRemoteDatasource(
+          ApplicationContainer.resolve<ReviewApiService>()),
+    );
+    ApplicationContainer.registerLazySingleton<ReviewRepository>(
+      () => ReviewRepositoryImpl(
+          ApplicationContainer.resolve<ReviewDatasource>()),
+    );
+    ApplicationContainer.registerLazySingleton<GetWineReviews>(
+      () => GetWineReviews(ApplicationContainer.resolve<ReviewRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<GetReviewTags>(
+      () => GetReviewTags(ApplicationContainer.resolve<ReviewRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<CreateReview>(
+      () => CreateReview(ApplicationContainer.resolve<ReviewRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<UpdateReview>(
+      () => UpdateReview(ApplicationContainer.resolve<ReviewRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<DeleteReview>(
+      () => DeleteReview(ApplicationContainer.resolve<ReviewRepository>()),
+    );
+
     // ── BLoCs ──
     ApplicationContainer.registerFactory<HomeBloc>(
       () => HomeBloc(ApplicationContainer.resolve<AuthRepository>()),
@@ -111,6 +153,17 @@ class VinumContainer {
     );
     ApplicationContainer.registerFactory<WineDetailBloc>(
       () => WineDetailBloc(ApplicationContainer.resolve<GetWineById>()),
+    );
+    ApplicationContainer.registerFactory<ReviewListBloc>(
+      () => ReviewListBloc(ApplicationContainer.resolve<GetWineReviews>()),
+    );
+    ApplicationContainer.registerFactory<ReviewFormBloc>(
+      () => ReviewFormBloc(
+        ApplicationContainer.resolve<CreateReview>(),
+        ApplicationContainer.resolve<UpdateReview>(),
+        ApplicationContainer.resolve<DeleteReview>(),
+        ApplicationContainer.resolve<GetReviewTags>(),
+      ),
     );
   }
 }

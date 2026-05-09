@@ -25,4 +25,6 @@ abstract class AuthRepository {
   Future<Try<void>> logout();
 
   User? getCurrentUser();
+
+  String? getAccessToken();
 }

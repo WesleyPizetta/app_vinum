@@ -2,6 +2,9 @@
 
 App Flutter para o projeto **Vinum**, com autenticação via Google (Supabase) e integração com a [api-vinum-bff](https://github.com/WesleyPizetta/api-vinum-bff).
 
+## Link apresentação YouTube
+
+- [Apresentação projeto](https://youtu.be/RMKR6w7dDE4)
 ---
 
 ## Pré-requisitos
