@@ -105,7 +105,8 @@ class _ReviewFormSheetState extends State<_ReviewFormSheet> {
         if (state is ReviewFormTagsLoaded && mounted) {
           setState(() => _availableTags = state.tags);
         }
-        if (state is ReviewFormSuccess) {
+        if (state is ReviewFormSuccess &&
+            state.operation == ReviewFormOperation.submit) {
           Navigator.of(context).pop();
 
           if (widget.hostContext.mounted) {
@@ -115,7 +116,8 @@ class _ReviewFormSheetState extends State<_ReviewFormSheet> {
             );
           }
         }
-        if (state is ReviewFormError) {
+        if (state is ReviewFormError &&
+            state.operation != ReviewFormOperation.delete) {
           final message = state.message.trim().isEmpty
               ? 'Oops, parece que não foi possível enviar sua avaliação. Tente novamente'
               : state.message;
@@ -199,7 +201,8 @@ class _ReviewFormSheetState extends State<_ReviewFormSheet> {
               builder: (context, state) {
                 return PrimaryButton(
                   text: isEdit ? 'Salvar' : 'Enviar',
-                  isLoading: state is ReviewFormLoading,
+                  isLoading: state is ReviewFormLoading &&
+                      state.operation == ReviewFormOperation.submit,
                   onPressed: _submit,
                 );
               },
