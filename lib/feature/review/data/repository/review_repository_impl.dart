@@ -1,6 +1,7 @@
 import 'package:essentials/essentials.dart';
 
 import '../../domain/entity/review.dart';
+import '../../domain/entity/review_tag.dart';
 import '../../domain/repository/review_repository.dart';
 import '../datasource/review_datasource.dart';
 
@@ -8,6 +9,16 @@ class ReviewRepositoryImpl implements ReviewRepository {
   final ReviewDatasource _datasource;
 
   const ReviewRepositoryImpl(this._datasource);
+
+  @override
+  Future<Try<List<ReviewTagOption>>> getTags() async {
+    try {
+      final tags = await _datasource.getTags();
+      return Try.success(tags);
+    } catch (e) {
+      return Try.reject(UnknownFailure(e));
+    }
+  }
 
   @override
   Future<Try<List<Review>>> getWineReviews(String wineId) async {
@@ -22,17 +33,17 @@ class ReviewRepositoryImpl implements ReviewRepository {
   @override
   Future<Try<Review>> createReview({
     required String wineId,
-    required String usuarioId,
     required double nota,
     String? comentario,
-    String? token,
+    required List<ReviewTag> tags,
+    required String token,
   }) async {
     try {
       final model = await _datasource.createReview(
         wineId: wineId,
-        usuarioId: usuarioId,
         nota: nota,
         comentario: comentario,
+        tags: tags,
         token: token,
       );
       return Try.success(model.toEntity());
@@ -46,6 +57,7 @@ class ReviewRepositoryImpl implements ReviewRepository {
     required String id,
     required double nota,
     String? comentario,
+    required List<ReviewTag> tags,
     required String token,
   }) async {
     try {
@@ -53,6 +65,7 @@ class ReviewRepositoryImpl implements ReviewRepository {
         id: id,
         nota: nota,
         comentario: comentario,
+        tags: tags,
         token: token,
       );
       return Try.success(model.toEntity());

@@ -54,9 +54,7 @@ class _WineDetailPageContent extends StatelessWidget {
     return BlocListener<ReviewFormBloc, ReviewFormState>(
       listener: (context, state) {
         if (state is ReviewFormSuccess) {
-          context
-              .read<ReviewListBloc>()
-              .add(ReviewListStarted(wineId: wineId));
+          context.read<ReviewListBloc>().add(ReviewListStarted(wineId: wineId));
         }
       },
       child: Scaffold(
@@ -85,7 +83,6 @@ class _WineDetailPageContent extends StatelessWidget {
                 onPressed: () => showReviewFormSheet(
                   context,
                   wineId: wineId,
-                  usuarioId: currentUser.id,
                   token: token,
                 ),
                 child: const Icon(Icons.rate_review_outlined),
@@ -211,7 +208,8 @@ class _ReviewsSection extends StatelessWidget {
     return BlocBuilder<ReviewListBloc, ReviewListState>(
       builder: (context, state) {
         return switch (state) {
-          ReviewListInitial() || ReviewListLoading() =>
+          ReviewListInitial() ||
+          ReviewListLoading() =>
             const Center(child: CircularProgressIndicator()),
           ReviewListError(:final message) => VinumErrorWidget(
               message: message,

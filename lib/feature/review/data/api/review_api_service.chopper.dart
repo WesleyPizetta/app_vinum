@@ -19,9 +19,24 @@ final class _$ReviewApiService extends ReviewApiService {
   final Type definitionType = ReviewApiService;
 
   @override
+  Future<Response<dynamic>> getTags() {
+    final Uri $url = Uri.parse('/v1/tags');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
   Future<Response<dynamic>> getWineReviews(String wineId) {
-    final Uri $url = Uri.parse('/v1/wines/$wineId/reviews');
-    final Request $request = Request('GET', $url, client.baseUrl);
+    final Uri $url = Uri.parse('/v1/wines/${wineId}/reviews');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
     return client.send<dynamic, dynamic>($request);
   }
 
@@ -29,11 +44,11 @@ final class _$ReviewApiService extends ReviewApiService {
   Future<Response<dynamic>> createReview(
     String wineId,
     Map<String, dynamic> body, {
-    String? authorization,
+    required String authorization,
   }) {
-    final Uri $url = Uri.parse('/v1/wines/$wineId/reviews');
+    final Uri $url = Uri.parse('/v1/wines/${wineId}/reviews');
     final Map<String, String> $headers = {
-      if (authorization != null) 'Authorization': authorization,
+      'Authorization': authorization,
     };
     final $body = body;
     final Request $request = Request(
@@ -50,11 +65,11 @@ final class _$ReviewApiService extends ReviewApiService {
   Future<Response<dynamic>> updateReview(
     String id,
     Map<String, dynamic> body, {
-    String? authorization,
+    required String authorization,
   }) {
-    final Uri $url = Uri.parse('/v1/reviews/$id');
+    final Uri $url = Uri.parse('/v1/reviews/${id}');
     final Map<String, String> $headers = {
-      if (authorization != null) 'Authorization': authorization,
+      'Authorization': authorization,
     };
     final $body = body;
     final Request $request = Request(
@@ -70,11 +85,11 @@ final class _$ReviewApiService extends ReviewApiService {
   @override
   Future<Response<dynamic>> deleteReview(
     String id, {
-    String? authorization,
+    required String authorization,
   }) {
-    final Uri $url = Uri.parse('/v1/reviews/$id');
+    final Uri $url = Uri.parse('/v1/reviews/${id}');
     final Map<String, String> $headers = {
-      if (authorization != null) 'Authorization': authorization,
+      'Authorization': authorization,
     };
     final Request $request = Request(
       'DELETE',

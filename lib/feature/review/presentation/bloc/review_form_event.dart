@@ -1,19 +1,23 @@
+import '../../domain/entity/review_tag.dart';
+
 sealed class ReviewFormEvent {}
+
+class ReviewFormTagsRequested extends ReviewFormEvent {}
 
 class ReviewFormSubmitted extends ReviewFormEvent {
   final String wineId;
-  final String usuarioId;
   final double nota;
   final String? comentario;
-  final String? token;
+  final List<ReviewTag> tags;
+  final String token;
   final String? reviewId;
 
   ReviewFormSubmitted({
     required this.wineId,
-    required this.usuarioId,
     required this.nota,
     this.comentario,
-    this.token,
+    this.tags = const [],
+    required this.token,
     this.reviewId,
   });
 }

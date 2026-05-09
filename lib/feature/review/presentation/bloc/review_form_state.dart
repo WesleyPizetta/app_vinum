@@ -1,6 +1,14 @@
+import '../../domain/entity/review_tag.dart';
+
 sealed class ReviewFormState {}
 
 class ReviewFormInitial extends ReviewFormState {}
+
+class ReviewFormTagsLoaded extends ReviewFormState {
+  final List<ReviewTagOption> tags;
+
+  ReviewFormTagsLoaded({required this.tags});
+}
 
 class ReviewFormLoading extends ReviewFormState {}
 

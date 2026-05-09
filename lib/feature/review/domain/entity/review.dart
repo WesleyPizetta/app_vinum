@@ -1,9 +1,12 @@
+import 'review_tag.dart';
+
 class Review {
   final String id;
   final int wineId;
   final String usuarioId;
   final double nota;
   final String? comentario;
+  final List<ReviewTag> tags;
   final DateTime createdAt;
 
   const Review({
@@ -12,6 +15,7 @@ class Review {
     required this.usuarioId,
     required this.nota,
     this.comentario,
+    this.tags = const [],
     required this.createdAt,
   });
 }

@@ -9,7 +9,7 @@ part 'wine_api_service.chopper.dart';
 /// dart run build_runner build --delete-conflicting-outputs
 /// ```
 // TODO: Ajustar os endpoints quando a API real estiver disponível
-@ChopperApi(baseUrl: '/wines')
+@ChopperApi(baseUrl: '/v1/wines')
 abstract class WineApiService extends ChopperService {
   static WineApiService create([ChopperClient? client]) =>
       _$WineApiService(client);

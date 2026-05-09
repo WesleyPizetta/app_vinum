@@ -41,4 +41,8 @@ export 'ui/widget/button/primary_button.dart';
 export 'ui/widget/button/secondary_button.dart';
 export 'ui/widget/loading/loading_widget.dart';
 export 'ui/widget/error/error_widget.dart';
-
+export 'ui/widget/icon/vinum_success_icon.dart';
+export 'ui/widget/icon/vinum_error_icon.dart';
+export 'ui/widget/modal/vinum_feedback_modal.dart';
+export 'ui/widget/modal/vinum_success_modal.dart';
+export 'ui/widget/modal/vinum_error_modal.dart';
