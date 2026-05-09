@@ -59,10 +59,12 @@ class AuthRepositoryImpl implements AuthRepository {
       debugPrint('[GoogleBFF] payload keys: ${payload.keys.join(', ')}');
 
       final response = await _authService.socialExchange(payload);
-      debugPrint('[GoogleBFF] resposta: status=${response.statusCode}  body=${response.body}');
+      debugPrint(
+          '[GoogleBFF] resposta: status=${response.statusCode}  body=${response.body}');
 
       if (!response.isSuccessful) {
-        debugPrint('[GoogleBFF] ERRO: status ${response.statusCode}  error=${response.error}');
+        debugPrint(
+            '[GoogleBFF] ERRO: status ${response.statusCode}  error=${response.error}');
         return Try.reject(KnownFailure('AUTH_ERROR', response.error,
             message: 'BFF returned ${response.statusCode}'));
       }
@@ -74,9 +76,10 @@ class AuthRepositoryImpl implements AuthRepository {
         return Try.reject(KnownFailure('AUTH_ERROR', null));
       }
 
-      _accessToken = responseBody?['access_token'] as String?;
+      _accessToken = _normalizeToken(responseBody?['access_token'] as String?);
       _refreshToken = responseBody?['refresh_token'] as String?;
-      debugPrint('[GoogleBFF] access_token ${_accessToken == null ? 'NULL' : 'recebido'}  refresh_token ${_refreshToken == null ? 'NULL' : 'recebido'}');
+      debugPrint(
+          '[GoogleBFF] access_token ${_accessToken == null ? 'NULL' : 'recebido'}  refresh_token ${_refreshToken == null ? 'NULL' : 'recebido'}');
 
       final user = User(
         id: (userMap['id'] as String?) ?? '',
@@ -86,7 +89,8 @@ class AuthRepositoryImpl implements AuthRepository {
             (userMap['email'] as String?),
       );
       _currentUser = user;
-      debugPrint('[GoogleBFF] usuário criado: id=${user.id}  email=${user.email}');
+      debugPrint(
+          '[GoogleBFF] usuário criado: id=${user.id}  email=${user.email}');
       return Try.success(user);
     } catch (e, st) {
       debugPrint('[GoogleBFF] ERRO inesperado em signInWithSocial: $e\n$st');
@@ -138,7 +142,7 @@ class AuthRepositoryImpl implements AuthRepository {
             message: 'BFF returned ${response.statusCode}'));
       }
       final responseBody = response.body as Map<String, dynamic>?;
-      _accessToken = responseBody?['access_token'] as String?;
+      _accessToken = _normalizeToken(responseBody?['access_token'] as String?);
       _refreshToken = responseBody?['refresh_token'] as String? ?? refreshToken;
       return Try.success(null);
     } catch (e) {
@@ -148,7 +152,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Try<void>> logout() async {
-    final accessToken = _accessToken;
+    final accessToken = _normalizeToken(_accessToken);
     try {
       if (accessToken != null && accessToken.isNotEmpty) {
         await _authService.logout(
@@ -180,9 +184,23 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   String? getAccessToken() {
     if (_accessToken != null && _accessToken!.isNotEmpty) {
-      return _accessToken;
+      return _normalizeToken(_accessToken);
     }
-    return _client.auth.currentSession?.accessToken;
+    return _normalizeToken(_client.auth.currentSession?.accessToken);
+  }
+
+  String? _normalizeToken(String? token) {
+    if (token == null) return null;
+
+    final normalized = token.trim();
+    if (normalized.isEmpty) return null;
+
+    if (normalized.toLowerCase().startsWith('bearer ')) {
+      final stripped = normalized.substring(7).trim();
+      return stripped.isEmpty ? null : stripped;
+    }
+
+    return normalized;
   }
 
   User _toUser(supa.User supaUser) {
