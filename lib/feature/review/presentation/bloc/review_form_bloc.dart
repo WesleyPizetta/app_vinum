@@ -52,7 +52,7 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
       ));
       result.fold(
         (failure) => emit(ReviewFormError(message: _mapSubmitFailure(failure))),
-        (_) => emit(ReviewFormSuccess()),
+        (review) => emit(ReviewFormSuccess(review: review)),
       );
     } else {
       final result = await _createReview(CreateReviewParams(
@@ -64,7 +64,7 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
       ));
       result.fold(
         (failure) => emit(ReviewFormError(message: _mapSubmitFailure(failure))),
-        (_) => emit(ReviewFormSuccess()),
+        (review) => emit(ReviewFormSuccess(review: review)),
       );
     }
   }
@@ -81,11 +81,20 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
 
     result.fold(
       (failure) => emit(ReviewFormError(message: _mapDeleteFailure(failure))),
-      (_) => emit(ReviewFormSuccess()),
+      (_) => emit(ReviewFormSuccess(deletedReviewId: event.reviewId)),
     );
   }
 
   String _mapSubmitFailure(Failure failure) {
+    final rawMessage = '${failure.error ?? ''}'.toLowerCase();
+    if (rawMessage.contains('duplicate') ||
+        rawMessage.contains('unique') ||
+        rawMessage.contains('already') ||
+        rawMessage.contains('já existe') ||
+        (rawMessage.contains('409') && rawMessage.contains('avalia'))) {
+      return 'Você já enviou uma avaliação para este vinho. Edite sua avaliação para atualizar os dados.';
+    }
+
     if (failure is KnownFailure) {
       final message = (failure.message ?? '').toLowerCase();
       if (message.contains('invalid') ||

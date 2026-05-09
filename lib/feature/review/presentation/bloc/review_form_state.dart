@@ -1,3 +1,4 @@
+import '../../domain/entity/review.dart';
 import '../../domain/entity/review_tag.dart';
 
 sealed class ReviewFormState {}
@@ -12,7 +13,12 @@ class ReviewFormTagsLoaded extends ReviewFormState {
 
 class ReviewFormLoading extends ReviewFormState {}
 
-class ReviewFormSuccess extends ReviewFormState {}
+class ReviewFormSuccess extends ReviewFormState {
+  final Review? review;
+  final String? deletedReviewId;
+
+  ReviewFormSuccess({this.review, this.deletedReviewId});
+}
 
 class ReviewFormError extends ReviewFormState {
   final String message;
