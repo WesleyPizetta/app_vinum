@@ -6,7 +6,9 @@ App Flutter para o projeto **Vinum**, com autenticação via Google (Supabase) e
 
 - [Apresentação projeto](https://youtu.be/RMKR6w7dDE4)
 
-- [desenvolvimento backend](https://youtu.be/eFaQLXIUD0c).
+- [Repositório da API](https://github.com/WesleyPizetta/api-vinum-bff)
+
+- [Desenvolvimento backend](https://youtu.be/eFaQLXIUD0c)
 Jhonatan Ferreira Bandiera
 Wesley Marques Pizetta
 ---
