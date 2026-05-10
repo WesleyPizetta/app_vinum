@@ -24,6 +24,7 @@ import '../../feature/review/data/datasource/review_remote_datasource.dart';
 import '../../feature/review/data/repository/review_repository_impl.dart';
 import '../../feature/review/domain/repository/review_repository.dart';
 import '../../feature/review/domain/usecase/get_wine_reviews.dart';
+import '../../feature/review/domain/usecase/get_review_tags.dart';
 import '../../feature/review/domain/usecase/create_review.dart';
 import '../../feature/review/domain/usecase/update_review.dart';
 import '../../feature/review/domain/usecase/delete_review.dart';
@@ -130,6 +131,9 @@ class VinumContainer {
     ApplicationContainer.registerLazySingleton<GetWineReviews>(
       () => GetWineReviews(ApplicationContainer.resolve<ReviewRepository>()),
     );
+    ApplicationContainer.registerLazySingleton<GetReviewTags>(
+      () => GetReviewTags(ApplicationContainer.resolve<ReviewRepository>()),
+    );
     ApplicationContainer.registerLazySingleton<CreateReview>(
       () => CreateReview(ApplicationContainer.resolve<ReviewRepository>()),
     );
@@ -158,6 +162,7 @@ class VinumContainer {
         ApplicationContainer.resolve<CreateReview>(),
         ApplicationContainer.resolve<UpdateReview>(),
         ApplicationContainer.resolve<DeleteReview>(),
+        ApplicationContainer.resolve<GetReviewTags>(),
       ),
     );
   }

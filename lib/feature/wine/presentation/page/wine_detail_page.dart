@@ -2,6 +2,7 @@ import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../feature/auth/domain/repository/auth_repository.dart';
+import '../../../../feature/review/domain/entity/review.dart';
 import '../../../../feature/review/presentation/bloc/review_form_bloc.dart';
 import '../../../../feature/review/presentation/bloc/review_form_state.dart';
 import '../../../../feature/review/presentation/bloc/review_list_bloc.dart';
@@ -53,10 +54,36 @@ class _WineDetailPageContent extends StatelessWidget {
 
     return BlocListener<ReviewFormBloc, ReviewFormState>(
       listener: (context, state) {
+        if (state is ReviewFormLoading &&
+            state.operation == ReviewFormOperation.delete) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(
+                duration: Duration(days: 1),
+                content: Text('Excluindo avaliação...'),
+              ),
+            );
+          return;
+        }
+
         if (state is ReviewFormSuccess) {
-          context
-              .read<ReviewListBloc>()
-              .add(ReviewListStarted(wineId: wineId));
+          if (state.operation == ReviewFormOperation.delete) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            showVinumSuccessModal(
+              context,
+              message: 'Avaliação excluída com sucesso!',
+            );
+          }
+
+          context.read<ReviewListBloc>().add(ReviewListStarted(wineId: wineId));
+          return;
+        }
+
+        if (state is ReviewFormError &&
+            state.operation == ReviewFormOperation.delete) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          showVinumErrorModal(context, message: state.message);
         }
       },
       child: Scaffold(
@@ -81,18 +108,61 @@ class _WineDetailPageContent extends StatelessWidget {
           },
         ),
         floatingActionButton: token != null && currentUser != null
-            ? FloatingActionButton(
-                onPressed: () => showReviewFormSheet(
-                  context,
-                  wineId: wineId,
-                  usuarioId: currentUser.id,
-                  token: token,
-                ),
-                child: const Icon(Icons.rate_review_outlined),
+            ? _ReviewFloatingActionButton(
+                wineId: wineId,
+                token: token,
+                currentUserId: currentUser.id,
               )
             : null,
       ),
     );
+  }
+}
+
+class _ReviewFloatingActionButton extends StatelessWidget {
+  final String wineId;
+  final String token;
+  final String currentUserId;
+
+  const _ReviewFloatingActionButton({
+    required this.wineId,
+    required this.token,
+    required this.currentUserId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ReviewListBloc, ReviewListState>(
+      builder: (context, state) {
+        final existingReview = switch (state) {
+          ReviewListLoaded(:final reviews) => _findUserReview(reviews),
+          _ => null,
+        };
+
+        final isEdit = existingReview != null;
+
+        return FloatingActionButton(
+          tooltip: isEdit ? 'Editar minha avaliação' : 'Adicionar avaliação',
+          onPressed: () => showReviewFormSheet(
+            context,
+            wineId: wineId,
+            token: token,
+            existingReview: existingReview,
+          ),
+          child:
+              Icon(isEdit ? Icons.edit_outlined : Icons.rate_review_outlined),
+        );
+      },
+    );
+  }
+
+  Review? _findUserReview(List<Review> reviews) {
+    for (final review in reviews) {
+      if (review.usuarioId == currentUserId) {
+        return review;
+      }
+    }
+    return null;
   }
 }
 
@@ -211,7 +281,8 @@ class _ReviewsSection extends StatelessWidget {
     return BlocBuilder<ReviewListBloc, ReviewListState>(
       builder: (context, state) {
         return switch (state) {
-          ReviewListInitial() || ReviewListLoading() =>
+          ReviewListInitial() ||
+          ReviewListLoading() =>
             const Center(child: CircularProgressIndicator()),
           ReviewListError(:final message) => VinumErrorWidget(
               message: message,
@@ -222,7 +293,7 @@ class _ReviewsSection extends StatelessWidget {
           ReviewListLoaded(:final reviews) when reviews.isEmpty =>
             Text(getString(context, 'reviews_empty')),
           ReviewListLoaded(:final reviews) => Column(
-              children: reviews
+              children: _sortForDisplay(reviews)
                   .map((r) => ReviewCard(
                         review: r,
                         wineId: wineId,
@@ -234,6 +305,25 @@ class _ReviewsSection extends StatelessWidget {
         };
       },
     );
+  }
+
+  List<Review> _sortForDisplay(List<Review> reviews) {
+    final sorted = [...reviews];
+
+    sorted.sort((a, b) {
+      final aIsCurrentUser =
+          currentUserId != null && a.usuarioId == currentUserId;
+      final bIsCurrentUser =
+          currentUserId != null && b.usuarioId == currentUserId;
+
+      if (aIsCurrentUser != bIsCurrentUser) {
+        return aIsCurrentUser ? -1 : 1;
+      }
+
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    return sorted;
   }
 }
 

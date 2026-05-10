@@ -20,7 +20,7 @@ final class _$WineApiService extends WineApiService {
 
   @override
   Future<Response<dynamic>> getWines() {
-    final Uri $url = Uri.parse('/wines');
+    final Uri $url = Uri.parse('/v1/wines');
     final Request $request = Request(
       'GET',
       $url,
@@ -31,7 +31,7 @@ final class _$WineApiService extends WineApiService {
 
   @override
   Future<Response<dynamic>> getWineById(String id) {
-    final Uri $url = Uri.parse('/wines/${id}');
+    final Uri $url = Uri.parse('/v1/wines/${id}');
     final Request $request = Request(
       'GET',
       $url,

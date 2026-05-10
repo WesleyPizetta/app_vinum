@@ -5,6 +5,7 @@ import '../../domain/entity/review.dart';
 import '../bloc/review_form_bloc.dart';
 import '../bloc/review_form_event.dart';
 import 'review_form_sheet.dart';
+import 'review_tag_badge.dart';
 
 class ReviewCard extends StatelessWidget {
   final Review review;
@@ -22,6 +23,19 @@ class ReviewCard extends StatelessWidget {
 
   bool get _isOwner =>
       currentUserId != null && currentUserId == review.usuarioId;
+
+  String get _authorLabel {
+    if (_isOwner) {
+      return 'Você';
+    }
+
+    final nome = review.usuarioNome?.trim();
+    if (nome != null && nome.isNotEmpty) {
+      return nome;
+    }
+
+    return 'Usuário';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +56,7 @@ class ReviewCard extends StatelessWidget {
                 const SizedBox(width: Dimens.spacing8),
                 Expanded(
                   child: Text(
-                    _isOwner ? 'Você' : review.usuarioId,
+                    _authorLabel,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis,
@@ -54,16 +68,30 @@ class ReviewCard extends StatelessWidget {
                   _OwnerActions(
                     review: review,
                     wineId: wineId,
-                    currentUserId: currentUserId!,
                     token: currentToken!,
                   ),
                 ],
               ],
             ),
-            if (review.comentario != null &&
-                review.comentario!.isNotEmpty) ...[
+            if (review.comentario != null && review.comentario!.isNotEmpty) ...[
               const SizedBox(height: Dimens.spacing8),
               Text(review.comentario!, style: theme.textTheme.bodyMedium),
+            ],
+            if (review.tags.isNotEmpty) ...[
+              const SizedBox(height: Dimens.spacing8),
+              Wrap(
+                spacing: Dimens.spacing8,
+                runSpacing: Dimens.spacing8,
+                children: review.tags
+                    .map(
+                      (tag) => ReviewTagBadge(
+                        tag: tag,
+                        selected: true,
+                        compact: true,
+                      ),
+                    )
+                    .toList(),
+              ),
             ],
           ],
         ),
@@ -91,7 +119,8 @@ class _RatingBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.star_rounded, size: 14, color: theme.colorScheme.onPrimary),
+          Icon(Icons.star_rounded,
+              size: 14, color: theme.colorScheme.onPrimary),
           const SizedBox(width: 2),
           Text(
             nota.toStringAsFixed(1),
@@ -109,13 +138,11 @@ class _RatingBadge extends StatelessWidget {
 class _OwnerActions extends StatelessWidget {
   final Review review;
   final String wineId;
-  final String currentUserId;
   final String token;
 
   const _OwnerActions({
     required this.review,
     required this.wineId,
-    required this.currentUserId,
     required this.token,
   });
 
@@ -130,7 +157,6 @@ class _OwnerActions extends StatelessWidget {
             showReviewFormSheet(
               context,
               wineId: wineId,
-              usuarioId: currentUserId,
               token: token,
               existingReview: review,
             );

@@ -1,21 +1,22 @@
 import 'package:essentials/essentials.dart';
 
 import '../entity/review.dart';
+import '../entity/review_tag.dart';
 import '../repository/review_repository.dart';
 
 class CreateReviewParams {
   final String wineId;
-  final String usuarioId;
   final double nota;
   final String? comentario;
-  final String? token;
+  final List<ReviewTag> tags;
+  final String token;
 
   const CreateReviewParams({
     required this.wineId,
-    required this.usuarioId,
     required this.nota,
     this.comentario,
-    this.token,
+    this.tags = const [],
+    required this.token,
   });
 }
 
@@ -28,9 +29,9 @@ class CreateReview implements UseCase<Review, CreateReviewParams> {
   Future<Try<Review>> call(CreateReviewParams params) =>
       _repository.createReview(
         wineId: params.wineId,
-        usuarioId: params.usuarioId,
         nota: params.nota,
         comentario: params.comentario,
+        tags: params.tags,
         token: params.token,
       );
 }
