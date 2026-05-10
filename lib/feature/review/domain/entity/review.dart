@@ -4,6 +4,7 @@ class Review {
   final String id;
   final int wineId;
   final String usuarioId;
+  final String? usuarioNome;
   final double nota;
   final String? comentario;
   final List<ReviewTag> tags;
@@ -13,6 +14,7 @@ class Review {
     required this.id,
     required this.wineId,
     required this.usuarioId,
+    this.usuarioNome,
     required this.nota,
     this.comentario,
     this.tags = const [],

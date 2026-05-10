@@ -5,6 +5,7 @@ class ReviewModel {
   final String id;
   final int wineId;
   final String usuarioId;
+  final String? usuarioNome;
   final double nota;
   final String? comentario;
   final List<ReviewTag> tags;
@@ -14,6 +15,7 @@ class ReviewModel {
     required this.id,
     required this.wineId,
     required this.usuarioId,
+    this.usuarioNome,
     required this.nota,
     this.comentario,
     this.tags = const [],
@@ -30,6 +32,7 @@ class ReviewModel {
       id: json['id'] as String,
       wineId: json['wine_id'] as int,
       usuarioId: json['usuario_id'] as String,
+      usuarioNome: json['usuario_nome'] as String?,
       nota: (json['nota'] as num).toDouble(),
       comentario: json['comentario'] as String?,
       tags: parsedTags,
@@ -41,6 +44,7 @@ class ReviewModel {
         id: id,
         wineId: wineId,
         usuarioId: usuarioId,
+        usuarioNome: usuarioNome,
         nota: nota,
         comentario: comentario,
         tags: tags,
