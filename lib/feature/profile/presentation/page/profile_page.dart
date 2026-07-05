@@ -68,11 +68,11 @@ class _ProfileContent extends StatelessWidget {
             child: CircleAvatar(
               radius: 48,
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              foregroundImage: _getAvatarImage(user),
               child: Text(
                 _getInitials(user),
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color:
-                          Theme.of(context).colorScheme.onPrimaryContainer,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
               ),
             ),
@@ -121,5 +121,13 @@ class _ProfileContent extends StatelessWidget {
       return parts.first[0].toUpperCase();
     }
     return user.email[0].toUpperCase();
+  }
+
+  ImageProvider<Object>? _getAvatarImage(User user) {
+    final avatarUrl = user.avatarUrl?.trim();
+    if (avatarUrl == null || avatarUrl.isEmpty) {
+      return null;
+    }
+    return NetworkImage(avatarUrl);
   }
 }
