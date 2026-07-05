@@ -9,6 +9,7 @@ import '../../feature/auth/domain/usecase/logout.dart';
 import '../../feature/auth/presentation/bloc/login_bloc.dart';
 import '../../feature/auth/presentation/bloc/register_bloc.dart';
 import '../../feature/home/presentation/bloc/home_bloc.dart';
+import '../../feature/profile/data/api/profile_api_service.dart';
 import '../../feature/profile/presentation/bloc/profile_bloc.dart';
 import '../../feature/wine/data/datasource/wine_datasource.dart';
 import '../../feature/wine/data/datasource/wine_mock_datasource.dart';
@@ -44,6 +45,7 @@ class VinumContainer {
         services: [
           AuthApiService.create(),
           ReviewApiService.create(),
+          ProfileApiService.create(),
           // WineApiService.create(), // descomentar quando API real estiver pronta
         ],
       ),
@@ -54,11 +56,16 @@ class VinumContainer {
       () => ApplicationContainer.resolve<ChopperClient>()
           .getService<AuthApiService>(),
     );
+    ApplicationContainer.registerLazySingleton<ProfileApiService>(
+      () => ApplicationContainer.resolve<ChopperClient>()
+          .getService<ProfileApiService>(),
+    );
 
     // ── Auth ──
     ApplicationContainer.registerLazySingleton<AuthRepository>(
       () => AuthRepositoryImpl(
         authService: ApplicationContainer.resolve<AuthApiService>(),
+        profileService: ApplicationContainer.resolve<ProfileApiService>(),
       ),
     );
     ApplicationContainer.registerLazySingleton<SignIn>(

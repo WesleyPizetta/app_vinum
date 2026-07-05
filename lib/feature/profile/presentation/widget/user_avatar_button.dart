@@ -17,6 +17,7 @@ class UserAvatarButton extends StatelessWidget {
         backgroundColor: user != null
             ? Theme.of(context).colorScheme.primaryContainer
             : Colors.grey.shade400,
+        foregroundImage: user != null ? _getAvatarImage(user!) : null,
         child: user != null
             ? Text(
                 _getInitials(user!),
@@ -39,5 +40,13 @@ class UserAvatarButton extends StatelessWidget {
       return parts.first[0].toUpperCase();
     }
     return user.email[0].toUpperCase();
+  }
+
+  ImageProvider<Object>? _getAvatarImage(User user) {
+    final avatarUrl = user.avatarUrl?.trim();
+    if (avatarUrl == null || avatarUrl.isEmpty) {
+      return null;
+    }
+    return NetworkImage(avatarUrl);
   }
 }
