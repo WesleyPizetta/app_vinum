@@ -24,6 +24,19 @@ class ReviewCard extends StatelessWidget {
   bool get _isOwner =>
       currentUserId != null && currentUserId == review.usuarioId;
 
+  String get _authorLabel {
+    if (_isOwner) {
+      return 'Você';
+    }
+
+    final nome = review.usuarioNome?.trim();
+    if (nome != null && nome.isNotEmpty) {
+      return nome;
+    }
+
+    return 'Usuário';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -43,7 +56,7 @@ class ReviewCard extends StatelessWidget {
                 const SizedBox(width: Dimens.spacing8),
                 Expanded(
                   child: Text(
-                    _isOwner ? 'Você' : review.usuarioId,
+                    _authorLabel,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis,

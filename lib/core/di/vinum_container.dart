@@ -9,6 +9,7 @@ import '../../feature/auth/domain/usecase/logout.dart';
 import '../../feature/auth/presentation/bloc/login_bloc.dart';
 import '../../feature/auth/presentation/bloc/register_bloc.dart';
 import '../../feature/home/presentation/bloc/home_bloc.dart';
+import '../../feature/profile/data/api/profile_api_service.dart';
 import '../../feature/profile/presentation/bloc/profile_bloc.dart';
 import '../../feature/wine/data/datasource/wine_datasource.dart';
 import '../../feature/wine/data/datasource/wine_mock_datasource.dart';
@@ -30,6 +31,31 @@ import '../../feature/review/domain/usecase/update_review.dart';
 import '../../feature/review/domain/usecase/delete_review.dart';
 import '../../feature/review/presentation/bloc/review_list_bloc.dart';
 import '../../feature/review/presentation/bloc/review_form_bloc.dart';
+import '../../feature/explore/data/datasource/explore_datasource.dart';
+import '../../feature/explore/data/datasource/explore_mock_datasource.dart';
+import '../../feature/explore/data/repository/explore_repository_impl.dart';
+import '../../feature/explore/domain/repository/explore_repository.dart';
+import '../../feature/explore/domain/usecase/get_explore_items.dart';
+import '../../feature/explore/presentation/bloc/explore_bloc.dart';
+import '../../feature/cellar/data/datasource/cellar_datasource.dart';
+import '../../feature/cellar/data/datasource/cellar_mock_datasource.dart';
+import '../../feature/cellar/data/repository/cellar_repository_impl.dart';
+import '../../feature/cellar/domain/repository/cellar_repository.dart';
+import '../../feature/cellar/domain/usecase/get_cellar_items.dart';
+import '../../feature/cellar/presentation/bloc/cellar_bloc.dart';
+import '../../feature/collections/data/datasource/collections_datasource.dart';
+import '../../feature/collections/data/datasource/collections_mock_datasource.dart';
+import '../../feature/collections/data/repository/collections_repository_impl.dart';
+import '../../feature/collections/domain/repository/collections_repository.dart';
+import '../../feature/collections/domain/usecase/get_collections.dart';
+import '../../feature/collections/presentation/bloc/collections_bloc.dart';
+import '../../feature/settings/data/datasource/settings_datasource.dart';
+import '../../feature/settings/data/datasource/settings_local_datasource.dart';
+import '../../feature/settings/data/repository/settings_repository_impl.dart';
+import '../../feature/settings/domain/repository/settings_repository.dart';
+import '../../feature/settings/domain/usecase/get_theme_mode.dart';
+import '../../feature/settings/domain/usecase/set_theme_mode.dart';
+import '../../feature/settings/presentation/bloc/settings_bloc.dart';
 
 // TODO: Descomentar quando a API real estiver disponível
 // import '../../feature/wine/data/api/wine_api_service.dart';
@@ -44,7 +70,13 @@ class VinumContainer {
         services: [
           AuthApiService.create(),
           ReviewApiService.create(),
+          ProfileApiService.create(),
           // WineApiService.create(), // descomentar quando API real estiver pronta
+        ],
+        interceptors: [
+          AuthHeaderInterceptor(
+            () => ApplicationContainer.resolve<AuthRepository>().getAccessToken(),
+          ),
         ],
       ),
     );
@@ -54,11 +86,16 @@ class VinumContainer {
       () => ApplicationContainer.resolve<ChopperClient>()
           .getService<AuthApiService>(),
     );
+    ApplicationContainer.registerLazySingleton<ProfileApiService>(
+      () => ApplicationContainer.resolve<ChopperClient>()
+          .getService<ProfileApiService>(),
+    );
 
     // ── Auth ──
     ApplicationContainer.registerLazySingleton<AuthRepository>(
       () => AuthRepositoryImpl(
         authService: ApplicationContainer.resolve<AuthApiService>(),
+        profileService: ApplicationContainer.resolve<ProfileApiService>(),
       ),
     );
     ApplicationContainer.registerLazySingleton<SignIn>(
@@ -163,6 +200,92 @@ class VinumContainer {
         ApplicationContainer.resolve<UpdateReview>(),
         ApplicationContainer.resolve<DeleteReview>(),
         ApplicationContainer.resolve<GetReviewTags>(),
+      ),
+    );
+
+    // ── Explore Feature ──
+    ApplicationContainer.registerLazySingleton<ExploreDatasource>(
+      () => ExploreMockDatasource(),
+    );
+    ApplicationContainer.registerLazySingleton<ExploreRepository>(
+      () => ExploreRepositoryImpl(
+        ApplicationContainer.resolve<ExploreDatasource>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<GetExploreItems>(
+      () => GetExploreItems(
+        ApplicationContainer.resolve<ExploreRepository>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<ExploreBloc>(
+      () => ExploreBloc(
+        ApplicationContainer.resolve<GetExploreItems>(),
+      ),
+    );
+
+    // ── Cellar Feature ──
+    ApplicationContainer.registerLazySingleton<CellarDatasource>(
+      () => CellarMockDatasource(),
+    );
+    ApplicationContainer.registerLazySingleton<CellarRepository>(
+      () => CellarRepositoryImpl(
+        ApplicationContainer.resolve<CellarDatasource>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<GetCellarItems>(
+      () => GetCellarItems(
+        ApplicationContainer.resolve<CellarRepository>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<CellarBloc>(
+      () => CellarBloc(
+        ApplicationContainer.resolve<GetCellarItems>(),
+      ),
+    );
+
+    // ── Collections Feature ──
+    ApplicationContainer.registerLazySingleton<CollectionsDatasource>(
+      () => CollectionsMockDatasource(),
+    );
+    ApplicationContainer.registerLazySingleton<CollectionsRepository>(
+      () => CollectionsRepositoryImpl(
+        ApplicationContainer.resolve<CollectionsDatasource>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<GetCollections>(
+      () => GetCollections(
+        ApplicationContainer.resolve<CollectionsRepository>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<CollectionsBloc>(
+      () => CollectionsBloc(
+        ApplicationContainer.resolve<GetCollections>(),
+      ),
+    );
+
+    // ── Settings & Theme Feature ──
+    ApplicationContainer.registerLazySingleton<SettingsDatasource>(
+      () => SettingsLocalDatasource(),
+    );
+    ApplicationContainer.registerLazySingleton<SettingsRepository>(
+      () => SettingsRepositoryImpl(
+        ApplicationContainer.resolve<SettingsDatasource>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<GetThemeMode>(
+      () => GetThemeMode(
+        ApplicationContainer.resolve<SettingsRepository>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<SetThemeMode>(
+      () => SetThemeMode(
+        ApplicationContainer.resolve<SettingsRepository>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<SettingsBloc>(
+      () => SettingsBloc(
+        ApplicationContainer.resolve<GetThemeMode>(),
+        ApplicationContainer.resolve<SetThemeMode>(),
       ),
     );
   }

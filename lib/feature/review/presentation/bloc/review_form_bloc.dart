@@ -19,9 +19,17 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
     this._deleteReview,
     this._getReviewTags,
   ) : super(ReviewFormInitial()) {
+    on<ReviewFormReset>(_onReset);
     on<ReviewFormTagsRequested>(_onTagsRequested);
     on<ReviewFormSubmitted>(_onSubmitted);
     on<ReviewFormDeleted>(_onDeleted);
+  }
+
+  void _onReset(
+    ReviewFormReset event,
+    Emitter<ReviewFormState> emit,
+  ) {
+    emit(ReviewFormInitial());
   }
 
   Future<void> _onTagsRequested(
@@ -31,7 +39,10 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
     final result = await _getReviewTags(null);
 
     result.fold(
-      (failure) => emit(ReviewFormError(message: failure.toString())),
+      (failure) => emit(ReviewFormError(
+        message: _mapTagsFailure(failure),
+        operation: ReviewFormOperation.tags,
+      )),
       (tags) => emit(ReviewFormTagsLoaded(tags: tags)),
     );
   }
@@ -40,7 +51,7 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
     ReviewFormSubmitted event,
     Emitter<ReviewFormState> emit,
   ) async {
-    emit(ReviewFormLoading());
+    emit(ReviewFormLoading(operation: ReviewFormOperation.submit));
 
     if (event.reviewId != null) {
       final result = await _updateReview(UpdateReviewParams(
@@ -51,8 +62,14 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
         token: event.token,
       ));
       result.fold(
-        (failure) => emit(ReviewFormError(message: failure.toString())),
-        (_) => emit(ReviewFormSuccess()),
+        (failure) => emit(ReviewFormError(
+          message: _mapSubmitFailure(failure),
+          operation: ReviewFormOperation.submit,
+        )),
+        (review) => emit(ReviewFormSuccess(
+          review: review,
+          operation: ReviewFormOperation.submit,
+        )),
       );
     } else {
       final result = await _createReview(CreateReviewParams(
@@ -63,8 +80,14 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
         token: event.token,
       ));
       result.fold(
-        (failure) => emit(ReviewFormError(message: failure.toString())),
-        (_) => emit(ReviewFormSuccess()),
+        (failure) => emit(ReviewFormError(
+          message: _mapSubmitFailure(failure),
+          operation: ReviewFormOperation.submit,
+        )),
+        (review) => emit(ReviewFormSuccess(
+          review: review,
+          operation: ReviewFormOperation.submit,
+        )),
       );
     }
   }
@@ -73,15 +96,66 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
     ReviewFormDeleted event,
     Emitter<ReviewFormState> emit,
   ) async {
-    emit(ReviewFormLoading());
+    emit(ReviewFormLoading(operation: ReviewFormOperation.delete));
 
     final result = await _deleteReview(
       DeleteReviewParams(id: event.reviewId, token: event.token),
     );
 
     result.fold(
-      (failure) => emit(ReviewFormError(message: failure.toString())),
-      (_) => emit(ReviewFormSuccess()),
+      (failure) => emit(ReviewFormError(
+        message: _mapDeleteFailure(failure),
+        operation: ReviewFormOperation.delete,
+      )),
+      (_) => emit(ReviewFormSuccess(
+        deletedReviewId: event.reviewId,
+        operation: ReviewFormOperation.delete,
+      )),
     );
+  }
+
+  String _mapSubmitFailure(Failure failure) {
+    final rawMessage = '${failure.error ?? ''}'.toLowerCase();
+    if (rawMessage.contains('duplicate') ||
+        rawMessage.contains('unique') ||
+        rawMessage.contains('already') ||
+        rawMessage.contains('já existe') ||
+        (rawMessage.contains('409') && rawMessage.contains('avalia'))) {
+      return 'Você já enviou uma avaliação para este vinho. Edite sua avaliação para atualizar os dados.';
+    }
+
+    if (failure is KnownFailure) {
+      final message = (failure.message ?? '').toLowerCase();
+      if (message.contains('invalid') ||
+          message.contains('input') ||
+          message.contains('nota') ||
+          message.contains('wine_id')) {
+        return 'Não foi possível enviar sua avaliação. Verifique os dados e tente novamente.';
+      }
+    }
+
+    return 'Oops, parece que não foi possível enviar sua avaliação. Tente novamente';
+  }
+
+  String _mapDeleteFailure(Failure failure) {
+    if (failure is KnownFailure) {
+      final message = (failure.message ?? '').toLowerCase();
+      if (message.contains('forbidden') || message.contains('unauthorized')) {
+        return 'Você não tem permissão para excluir esta avaliação.';
+      }
+    }
+
+    return 'Oops, parece que não foi possível excluir sua avaliação. Tente novamente';
+  }
+
+  String _mapTagsFailure(Failure failure) {
+    if (failure is KnownFailure) {
+      final message = (failure.message ?? '').toLowerCase();
+      if (message.contains('unauthorized')) {
+        return 'Sua sessão expirou. Faça login novamente para continuar.';
+      }
+    }
+
+    return 'Oops, parece que não foi possível carregar as tags. Tente novamente';
   }
 }

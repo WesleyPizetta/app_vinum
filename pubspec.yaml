@@ -18,6 +18,37 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # of the product and file versions while build-number is used as the build suffix.
 version: 1.0.4+5
 
+workspace:
+  - packages/essentials
+
+melos:
+  scripts:
+    bootstrap:
+      description: Execute pub get e conecte todos os pacotes do monorepo.
+      run: dart run melos bootstrap
+
+    analyze:
+      description: Execute a analise estatica em todos os pacotes.
+      exec: flutter analyze
+
+    format:
+      description: Formate todos os arquivos Dart do monorepo.
+      exec: dart format .
+
+    test:
+      description: Execute a bateria de testes em todos os pacotes.
+      exec: flutter test
+
+    build_runner:
+      description: Gere os arquivos do build_runner (Chopper, models, etc.).
+      exec: dart run build_runner build --delete-conflicting-outputs
+      select-package:
+        depends-on: build_runner
+
+    clean:
+      description: Limpe a build e cache de todos os pacotes.
+      exec: flutter clean
+
 environment:
   sdk: ^3.6.0
 
@@ -40,6 +71,8 @@ dependencies:
   package_info_plus: ^8.0.0
   firebase_core: ^3.0.0
   firebase_analytics: ^11.0.0
+  shared_preferences: ^2.5.3
+  flutter_secure_storage: ^10.3.1
 
 dev_dependencies:
   flutter_test:
@@ -47,8 +80,10 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   build_runner: ^2.4.0
   chopper_generator: ^8.0.0
+  bloc: ^9.0.0
   bloc_test: ^10.0.0
   mocktail: ^1.0.0
+  melos: ^8.6.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -61,6 +96,7 @@ flutter:
     - lang/
     - .env
     - .env.prod
+    - assets/
 
   # Fontes Art Nouveau — coloque os .ttf/.otf em fonts/
   fonts:

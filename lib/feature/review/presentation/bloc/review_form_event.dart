@@ -2,6 +2,8 @@ import '../../domain/entity/review_tag.dart';
 
 sealed class ReviewFormEvent {}
 
+class ReviewFormReset extends ReviewFormEvent {}
+
 class ReviewFormTagsRequested extends ReviewFormEvent {}
 
 class ReviewFormSubmitted extends ReviewFormEvent {

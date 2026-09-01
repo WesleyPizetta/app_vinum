@@ -1,6 +1,11 @@
 import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
+import '../bloc/settings_bloc.dart';
+import '../bloc/settings_event.dart';
+import '../bloc/settings_state.dart';
+import '../widget/theme_selector_card.dart';
+
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
@@ -12,30 +17,63 @@ class SettingsPage extends StatelessWidget {
       appBar: VinumAppBar(
         title: getString(context, 'settings'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(Dimens.spacing16),
-        children: [
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('Ambiente'),
-            subtitle: Text(environment.name),
-          ),
-          ListTile(
-            leading: const Icon(Icons.link),
-            title: const Text('API URL'),
-            subtitle: Text(environment.apiUrl),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.palette),
-            title: const Text('Tema'),
-            subtitle: Text('Vinum palette'),
-            trailing: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              radius: 12,
-            ),
-          ),
-        ],
+      body: BlocBuilder<SettingsBloc, SettingsState>(
+        builder: (context, state) {
+          return ListView(
+            padding: const EdgeInsets.all(Dimens.spacing16),
+            children: [
+              ThemeSelectorCard(
+                selectedMode: state.themeMode,
+                onThemeSelected: (mode) {
+                  context.read<SettingsBloc>().add(SettingsThemeChanged(mode));
+                },
+              ),
+              const SizedBox(height: Dimens.spacing16),
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Dimens.radiusLarge),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(Dimens.spacing8),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.15),
+                          child: Icon(
+                            Icons.info_outline,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        title: const Text('Ambiente'),
+                        subtitle: Text(environment.name),
+                      ),
+                      const Divider(indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .secondary
+                              .withValues(alpha: 0.15),
+                          child: Icon(
+                            Icons.link,
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                        ),
+                        title: const Text('API URL'),
+                        subtitle: Text(environment.apiUrl),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

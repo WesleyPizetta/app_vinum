@@ -29,6 +29,14 @@ class ProfilePage extends StatelessWidget {
         child: Scaffold(
           appBar: VinumAppBar(
             title: getString(context, 'profile'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.settings),
+                tooltip: getString(context, 'settings'),
+                onPressed: () =>
+                    Navigator.pushNamed(context, ApplicationRoute.settings),
+              ),
+            ],
           ),
           body: BlocBuilder<ProfileBloc, ProfileState>(
             builder: (context, state) {
@@ -68,11 +76,11 @@ class _ProfileContent extends StatelessWidget {
             child: CircleAvatar(
               radius: 48,
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              foregroundImage: _getAvatarImage(user),
               child: Text(
                 _getInitials(user),
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color:
-                          Theme.of(context).colorScheme.onPrimaryContainer,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
               ),
             ),
@@ -93,6 +101,12 @@ class _ProfileContent extends StatelessWidget {
                 ),
           ),
           const Spacer(),
+          SecondaryButton(
+            text: getString(context, 'settings'),
+            onPressed: () =>
+                Navigator.pushNamed(context, ApplicationRoute.settings),
+          ),
+          const SizedBox(height: Dimens.spacing12),
           OutlinedButton(
             onPressed: () =>
                 context.read<ProfileBloc>().add(ProfileLogoutRequested()),
@@ -121,5 +135,13 @@ class _ProfileContent extends StatelessWidget {
       return parts.first[0].toUpperCase();
     }
     return user.email[0].toUpperCase();
+  }
+
+  ImageProvider<Object>? _getAvatarImage(User user) {
+    final avatarUrl = user.avatarUrl?.trim();
+    if (avatarUrl == null || avatarUrl.isEmpty) {
+      return null;
+    }
+    return NetworkImage(avatarUrl);
   }
 }

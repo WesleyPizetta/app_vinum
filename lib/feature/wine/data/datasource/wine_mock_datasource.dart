@@ -6,7 +6,7 @@ import 'wine_datasource.dart';
 class WineMockDatasource implements WineDatasource {
   static const _mockWines = [
     WineModel(
-      id: '1',
+      id: '100001',
       name: 'Château Margaux 2015',
       winery: 'Château Margaux',
       region: 'Margaux, Bordeaux',
@@ -15,12 +15,11 @@ class WineMockDatasource implements WineDatasource {
       vintage: 2015,
       rating: 4.8,
       imageUrl: '',
-      description:
-          'Um Bordeaux clássico com notas de cassis, violeta e cedro. '
+      description: 'Um Bordeaux clássico com notas de cassis, violeta e cedro. '
           'Taninos elegantes e final longo e persistente.',
     ),
     WineModel(
-      id: '2',
+      id: '100002',
       name: 'Tignanello 2018',
       winery: 'Antinori',
       region: 'Toscana',
@@ -34,7 +33,7 @@ class WineMockDatasource implements WineDatasource {
           'Cabernet Franc. Notas de cereja madura, especiarias e baunilha.',
     ),
     WineModel(
-      id: '3',
+      id: '100003',
       name: 'Catena Zapata Malbec 2019',
       winery: 'Bodega Catena Zapata',
       region: 'Mendoza',
@@ -48,7 +47,7 @@ class WineMockDatasource implements WineDatasource {
           'e notas florais. Corpo cheio e taninos aveludados.',
     ),
     WineModel(
-      id: '4',
+      id: '100005',
       name: 'Penfolds Grange 2017',
       winery: 'Penfolds',
       region: 'South Australia',
@@ -62,7 +61,7 @@ class WineMockDatasource implements WineDatasource {
           'cravinho e carvalho tostado. Estrutura monumental.',
     ),
     WineModel(
-      id: '5',
+      id: '100007',
       name: 'Casillero del Diablo Reserva 2021',
       winery: 'Concha y Toro',
       region: 'Valle Central',

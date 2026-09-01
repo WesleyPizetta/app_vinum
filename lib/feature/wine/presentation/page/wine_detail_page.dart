@@ -1,7 +1,9 @@
 import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../feature/auth/domain/entity/user.dart';
 import '../../../../feature/auth/domain/repository/auth_repository.dart';
+import '../../../../feature/review/domain/entity/review.dart';
 import '../../../../feature/review/presentation/bloc/review_form_bloc.dart';
 import '../../../../feature/review/presentation/bloc/review_form_state.dart';
 import '../../../../feature/review/presentation/bloc/review_list_bloc.dart';
@@ -15,11 +17,17 @@ import '../bloc/wine_detail_event.dart';
 import '../bloc/wine_detail_state.dart';
 
 class WineDetailPage extends StatelessWidget {
-  const WineDetailPage({super.key});
+  final AuthRepository? authRepository;
+
+  const WineDetailPage({super.key, this.authRepository});
 
   @override
   Widget build(BuildContext context) {
     final wineId = ModalRoute.of(context)!.settings.arguments as String;
+    final authRepo =
+        authRepository ?? ApplicationContainer.resolve<AuthRepository>();
+    final currentUser = authRepo.getCurrentUser();
+    final token = authRepo.getAccessToken();
 
     return MultiBlocProvider(
       providers: [
@@ -35,26 +43,63 @@ class WineDetailPage extends StatelessWidget {
           create: (_) => ApplicationContainer.resolve<ReviewFormBloc>(),
         ),
       ],
-      child: _WineDetailPageContent(wineId: wineId),
+      child: _WineDetailPageContent(
+        wineId: wineId,
+        currentUser: currentUser,
+        token: token,
+      ),
     );
   }
 }
 
 class _WineDetailPageContent extends StatelessWidget {
   final String wineId;
+  final User? currentUser;
+  final String? token;
 
-  const _WineDetailPageContent({required this.wineId});
+  const _WineDetailPageContent({
+    required this.wineId,
+    required this.currentUser,
+    required this.token,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final authRepo = ApplicationContainer.resolve<AuthRepository>();
-    final currentUser = authRepo.getCurrentUser();
-    final token = authRepo.getAccessToken();
+    final currentToken = token;
+    final user = currentUser;
 
     return BlocListener<ReviewFormBloc, ReviewFormState>(
       listener: (context, state) {
+        if (state is ReviewFormLoading &&
+            state.operation == ReviewFormOperation.delete) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(
+                duration: Duration(days: 1),
+                content: Text('Excluindo avaliação...'),
+              ),
+            );
+          return;
+        }
+
         if (state is ReviewFormSuccess) {
+          if (state.operation == ReviewFormOperation.delete) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            showVinumSuccessModal(
+              context,
+              message: 'Avaliação excluída com sucesso!',
+            );
+          }
+
           context.read<ReviewListBloc>().add(ReviewListStarted(wineId: wineId));
+          return;
+        }
+
+        if (state is ReviewFormError &&
+            state.operation == ReviewFormOperation.delete) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          showVinumErrorModal(context, message: state.message);
         }
       },
       child: Scaffold(
@@ -66,8 +111,8 @@ class _WineDetailPageContent extends StatelessWidget {
               WineDetailLoaded(:final wine) => _WineDetailContent(
                   wine: wine,
                   wineId: wineId,
-                  currentUserId: currentUser?.id,
-                  token: token,
+                  currentUserId: user?.id,
+                  token: currentToken,
                 ),
               WineDetailError(:final message) => VinumErrorWidget(
                   message: message,
@@ -78,18 +123,62 @@ class _WineDetailPageContent extends StatelessWidget {
             };
           },
         ),
-        floatingActionButton: token != null && currentUser != null
-            ? FloatingActionButton(
-                onPressed: () => showReviewFormSheet(
-                  context,
-                  wineId: wineId,
-                  token: token,
-                ),
-                child: const Icon(Icons.rate_review_outlined),
+        floatingActionButton: currentToken != null && user != null
+            ? _ReviewFloatingActionButton(
+                wineId: wineId,
+                token: currentToken,
+                currentUserId: user.id,
               )
             : null,
       ),
     );
+  }
+}
+
+class _ReviewFloatingActionButton extends StatelessWidget {
+  final String wineId;
+  final String token;
+  final String currentUserId;
+
+  const _ReviewFloatingActionButton({
+    required this.wineId,
+    required this.token,
+    required this.currentUserId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ReviewListBloc, ReviewListState>(
+      builder: (context, state) {
+        final existingReview = switch (state) {
+          ReviewListLoaded(:final reviews) => _findUserReview(reviews),
+          _ => null,
+        };
+
+        final isEdit = existingReview != null;
+
+        return FloatingActionButton(
+          tooltip: isEdit ? 'Editar minha avaliação' : 'Adicionar avaliação',
+          onPressed: () => showReviewFormSheet(
+            context,
+            wineId: wineId,
+            token: token,
+            existingReview: existingReview,
+          ),
+          child:
+              Icon(isEdit ? Icons.edit_outlined : Icons.rate_review_outlined),
+        );
+      },
+    );
+  }
+
+  Review? _findUserReview(List<Review> reviews) {
+    for (final review in reviews) {
+      if (review.usuarioId == currentUserId) {
+        return review;
+      }
+    }
+    return null;
   }
 }
 
@@ -119,8 +208,8 @@ class _WineDetailContent extends StatelessWidget {
             title: Text(
               wine.name,
               style: TextStyle(
-                fontFamily: 'Amarante',
                 fontSize: 16,
+                fontWeight: FontWeight.w600,
                 color: theme.colorScheme.onPrimary,
               ),
             ),
@@ -220,7 +309,7 @@ class _ReviewsSection extends StatelessWidget {
           ReviewListLoaded(:final reviews) when reviews.isEmpty =>
             Text(getString(context, 'reviews_empty')),
           ReviewListLoaded(:final reviews) => Column(
-              children: reviews
+              children: _sortForDisplay(reviews)
                   .map((r) => ReviewCard(
                         review: r,
                         wineId: wineId,
@@ -232,6 +321,25 @@ class _ReviewsSection extends StatelessWidget {
         };
       },
     );
+  }
+
+  List<Review> _sortForDisplay(List<Review> reviews) {
+    final sorted = [...reviews];
+
+    sorted.sort((a, b) {
+      final aIsCurrentUser =
+          currentUserId != null && a.usuarioId == currentUserId;
+      final bIsCurrentUser =
+          currentUserId != null && b.usuarioId == currentUserId;
+
+      if (aIsCurrentUser != bIsCurrentUser) {
+        return aIsCurrentUser ? -1 : 1;
+      }
+
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    return sorted;
   }
 }
 

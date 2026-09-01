@@ -23,7 +23,8 @@ class Rejection<T> extends Left<Failure, T> implements Try<T> {
   Rejection(super.error);
 
   @override
-  Try<O> transform<O>({required O data}) => Rejection<O>((this as Left<Failure, T>).value);
+  Try<O> transform<O>({required O data}) =>
+      Rejection<O>((this as Left<Failure, T>).value);
 
   Failure get() => (this as Left<Failure, T>).value;
 }
