@@ -29,6 +29,14 @@ class ProfilePage extends StatelessWidget {
         child: Scaffold(
           appBar: VinumAppBar(
             title: getString(context, 'profile'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.settings),
+                tooltip: getString(context, 'settings'),
+                onPressed: () =>
+                    Navigator.pushNamed(context, ApplicationRoute.settings),
+              ),
+            ],
           ),
           body: BlocBuilder<ProfileBloc, ProfileState>(
             builder: (context, state) {
@@ -93,6 +101,12 @@ class _ProfileContent extends StatelessWidget {
                 ),
           ),
           const Spacer(),
+          SecondaryButton(
+            text: getString(context, 'settings'),
+            onPressed: () =>
+                Navigator.pushNamed(context, ApplicationRoute.settings),
+          ),
+          const SizedBox(height: Dimens.spacing12),
           OutlinedButton(
             onPressed: () =>
                 context.read<ProfileBloc>().add(ProfileLogoutRequested()),

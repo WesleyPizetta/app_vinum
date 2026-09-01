@@ -3,6 +3,28 @@ import 'package:flutter/material.dart';
 import '../../dimens.dart';
 import '../button/primary_button.dart';
 
+Future<T?> showVinumFeedbackModal<T>(
+  BuildContext context, {
+  required Widget icon,
+  required String message,
+  String primaryButtonText = 'Fechar',
+  VoidCallback? onPrimaryPressed,
+  bool closeOnPrimaryAction = true,
+  bool barrierDismissible = true,
+}) {
+  return showDialog<T>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    builder: (_) => VinumFeedbackModal(
+      icon: icon,
+      message: message,
+      primaryButtonText: primaryButtonText,
+      onPrimaryPressed: onPrimaryPressed,
+      closeOnPrimaryAction: closeOnPrimaryAction,
+    ),
+  );
+}
+
 class VinumFeedbackModal extends StatelessWidget {
   final Widget icon;
   final String message;

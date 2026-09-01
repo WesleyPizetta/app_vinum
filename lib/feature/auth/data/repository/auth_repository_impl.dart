@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:essentials/essentials.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
 import '../api/auth_api_service.dart';
@@ -13,16 +14,114 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({
     required AuthApiService authService,
     required ProfileApiService profileService,
+    FlutterSecureStorage? secureStorage,
+    supa.SupabaseClient? supabaseClient,
   })  : _authService = authService,
-        _profileService = profileService;
+        _profileService = profileService,
+        _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+        _customClient = supabaseClient {
+    _initPersistence();
+  }
 
-  final supa.SupabaseClient _client = supa.Supabase.instance.client;
   final AuthApiService _authService;
   final ProfileApiService _profileService;
+  final supa.SupabaseClient? _customClient;
+  final FlutterSecureStorage _secureStorage;
+
+  supa.SupabaseClient get _client =>
+      _customClient ?? supa.Supabase.instance.client;
 
   User? _currentUser;
   String? _accessToken;
   String? _refreshToken;
+
+  Future<void> _initPersistence() async {
+    await _restoreLocalSession();
+  }
+
+  Future<void> _restoreLocalSession() async {
+    try {
+      final token = await _secureStorage.read(key: 'auth_access_token');
+      final refresh = await _secureStorage.read(key: 'auth_refresh_token');
+      _accessToken ??= _normalizeToken(token);
+      _refreshToken ??= refresh;
+
+      if (_currentUser == null) {
+        final id = await _secureStorage.read(key: 'auth_user_id');
+        final email = await _secureStorage.read(key: 'auth_user_email');
+        if (id != null && id.isNotEmpty && email != null) {
+          final name = await _secureStorage.read(key: 'auth_user_name');
+          final avatar =
+              await _secureStorage.read(key: 'auth_user_avatar_url');
+          _currentUser = User(
+            id: id,
+            email: email,
+            name: name,
+            avatarUrl: avatar,
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AuthRepository] Erro ao restaurar sessão segura: $e');
+      }
+    }
+  }
+
+  Future<void> _saveLocalSession() async {
+    try {
+      if (_accessToken != null) {
+        await _secureStorage.write(
+            key: 'auth_access_token', value: _accessToken!);
+      } else {
+        await _secureStorage.delete(key: 'auth_access_token');
+      }
+
+      if (_refreshToken != null) {
+        await _secureStorage.write(
+            key: 'auth_refresh_token', value: _refreshToken!);
+      } else {
+        await _secureStorage.delete(key: 'auth_refresh_token');
+      }
+
+      if (_currentUser != null) {
+        await _secureStorage.write(key: 'auth_user_id', value: _currentUser!.id);
+        await _secureStorage.write(
+            key: 'auth_user_email', value: _currentUser!.email);
+        if (_currentUser!.name != null) {
+          await _secureStorage.write(
+              key: 'auth_user_name', value: _currentUser!.name!);
+        } else {
+          await _secureStorage.delete(key: 'auth_user_name');
+        }
+        if (_currentUser!.avatarUrl != null) {
+          await _secureStorage.write(
+              key: 'auth_user_avatar_url', value: _currentUser!.avatarUrl!);
+        } else {
+          await _secureStorage.delete(key: 'auth_user_avatar_url');
+        }
+      } else {
+        await _secureStorage.delete(key: 'auth_user_id');
+        await _secureStorage.delete(key: 'auth_user_email');
+        await _secureStorage.delete(key: 'auth_user_name');
+        await _secureStorage.delete(key: 'auth_user_avatar_url');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AuthRepository] Erro ao salvar sessão segura: $e');
+      }
+    }
+  }
+
+  Future<void> _clearLocalSession() async {
+    try {
+      await _secureStorage.deleteAll();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AuthRepository] Erro ao limpar sessão segura: $e');
+      }
+    }
+  }
 
   @override
   Future<Try<User>> signIn({
@@ -39,7 +138,10 @@ class AuthRepositoryImpl implements AuthRepository {
         return Try.reject(KnownFailure('INVALID_CREDENTIALS', null));
       }
       _currentUser = _toUser(supaUser);
+      _accessToken = _normalizeToken(response.session?.accessToken);
+      _refreshToken = response.session?.refreshToken;
       await _warmUpProfileForAvatar();
+      await _saveLocalSession();
       return Try.success(_currentUser!);
     } on supa.AuthException catch (e) {
       return Try.reject(
@@ -56,22 +158,23 @@ class AuthRepositoryImpl implements AuthRepository {
     required String idToken,
     String? nonce,
   }) async {
-    debugPrint('[GoogleBFF] signInWithSocial: provider=$provider');
+    if (kDebugMode) {
+      debugPrint('[GoogleBFF] signInWithSocial iniciado: provider=$provider');
+    }
     try {
       final payload = <String, dynamic>{
         'provider': provider,
         'id_token': idToken,
         if (nonce != null && nonce.trim().isNotEmpty) 'nonce': nonce,
       };
-      debugPrint('[GoogleBFF] payload keys: ${payload.keys.join(', ')}');
 
       final response = await _authService.socialExchange(payload);
-      debugPrint(
-          '[GoogleBFF] resposta: status=${response.statusCode}  body=${response.body}');
 
       if (!response.isSuccessful) {
-        debugPrint(
-            '[GoogleBFF] ERRO: status ${response.statusCode}  error=${response.error}');
+        if (kDebugMode) {
+          debugPrint(
+              '[GoogleBFF] ERRO: status ${response.statusCode}  error=${response.error}');
+        }
         return Try.reject(KnownFailure('AUTH_ERROR', response.error,
             message: 'BFF returned ${response.statusCode}'));
       }
@@ -79,14 +182,14 @@ class AuthRepositoryImpl implements AuthRepository {
       final responseBody = response.body as Map<String, dynamic>?;
       final userMap = responseBody?['user'] as Map<String, dynamic>?;
       if (userMap == null) {
-        debugPrint('[GoogleBFF] ERRO: campo "user" ausente na resposta');
+        if (kDebugMode) {
+          debugPrint('[GoogleBFF] ERRO: campo "user" ausente na resposta');
+        }
         return Try.reject(KnownFailure('AUTH_ERROR', null));
       }
 
       _accessToken = _normalizeToken(responseBody?['access_token'] as String?);
       _refreshToken = responseBody?['refresh_token'] as String?;
-      debugPrint(
-          '[GoogleBFF] access_token ${_accessToken == null ? 'NULL' : 'recebido'}  refresh_token ${_refreshToken == null ? 'NULL' : 'recebido'}');
 
       final user = User(
         id: (userMap['id'] as String?) ?? '',
@@ -98,11 +201,12 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       _currentUser = user;
       await _warmUpProfileForAvatar();
-      debugPrint(
-          '[GoogleBFF] usuário criado: id=${user.id}  email=${user.email}');
+      await _saveLocalSession();
       return Try.success(_currentUser!);
-    } catch (e, st) {
-      debugPrint('[GoogleBFF] ERRO inesperado em signInWithSocial: $e\n$st');
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[GoogleBFF] ERRO em signInWithSocial: $e');
+      }
       return Try.reject(UnknownFailure(e));
     }
   }
@@ -125,8 +229,10 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       final user = _toUser(supaUser);
       _currentUser = user;
-      // Best-effort para acionar geração de avatar no BFF.
+      _accessToken = _normalizeToken(response.session?.accessToken);
+      _refreshToken = response.session?.refreshToken;
       unawaited(_warmUpProfileForAvatar());
+      await _saveLocalSession();
       return Try.success(user);
     } on supa.AuthException catch (e) {
       return Try.reject(
@@ -155,6 +261,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final responseBody = response.body as Map<String, dynamic>?;
       _accessToken = _normalizeToken(responseBody?['access_token'] as String?);
       _refreshToken = responseBody?['refresh_token'] as String? ?? refreshToken;
+      await _saveLocalSession();
       return Try.success(null);
     } catch (e) {
       return Try.reject(UnknownFailure(e));
@@ -175,8 +282,10 @@ class AuthRepositoryImpl implements AuthRepository {
       _accessToken = null;
       _refreshToken = null;
       _currentUser = null;
+      await _clearLocalSession();
       return Try.success(null);
     } catch (e) {
+      await _clearLocalSession();
       return Try.reject(UnknownFailure(e));
     }
   }
@@ -225,16 +334,11 @@ class AuthRepositoryImpl implements AuthRepository {
         authorization: _toAuthorization(accessToken),
       );
       if (!response.isSuccessful) {
-        debugPrint(
-          '[AvatarProvision] warm-up profile falhou: status=${response.statusCode}',
-        );
         return;
       }
 
       final body = response.body;
       if (body is! Map<String, dynamic>) {
-        debugPrint(
-            '[AvatarProvision] resposta de perfil em formato inesperado');
         return;
       }
 
@@ -245,8 +349,11 @@ class AuthRepositoryImpl implements AuthRepository {
         name: _readString(body['full_name']) ?? current.name,
         avatarUrl: _readString(body['avatar_url']) ?? current.avatarUrl,
       );
-    } catch (e, st) {
-      debugPrint('[AvatarProvision] erro no warm-up de perfil: $e\n$st');
+      await _saveLocalSession();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AvatarProvision] erro no warm-up de perfil: $e');
+      }
     }
   }
 

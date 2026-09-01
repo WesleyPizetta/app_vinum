@@ -1,8 +1,6 @@
-import 'package:bloc/bloc.dart';
 import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:vinum/feature/auth/presentation/bloc/login_bloc.dart';
 import 'package:vinum/feature/auth/presentation/bloc/login_event.dart';

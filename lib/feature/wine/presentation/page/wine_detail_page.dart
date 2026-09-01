@@ -1,6 +1,7 @@
 import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../feature/auth/domain/entity/user.dart';
 import '../../../../feature/auth/domain/repository/auth_repository.dart';
 import '../../../../feature/review/domain/entity/review.dart';
 import '../../../../feature/review/presentation/bloc/review_form_bloc.dart';
@@ -16,11 +17,17 @@ import '../bloc/wine_detail_event.dart';
 import '../bloc/wine_detail_state.dart';
 
 class WineDetailPage extends StatelessWidget {
-  const WineDetailPage({super.key});
+  final AuthRepository? authRepository;
+
+  const WineDetailPage({super.key, this.authRepository});
 
   @override
   Widget build(BuildContext context) {
     final wineId = ModalRoute.of(context)!.settings.arguments as String;
+    final authRepo =
+        authRepository ?? ApplicationContainer.resolve<AuthRepository>();
+    final currentUser = authRepo.getCurrentUser();
+    final token = authRepo.getAccessToken();
 
     return MultiBlocProvider(
       providers: [
@@ -36,21 +43,30 @@ class WineDetailPage extends StatelessWidget {
           create: (_) => ApplicationContainer.resolve<ReviewFormBloc>(),
         ),
       ],
-      child: _WineDetailPageContent(wineId: wineId),
+      child: _WineDetailPageContent(
+        wineId: wineId,
+        currentUser: currentUser,
+        token: token,
+      ),
     );
   }
 }
 
 class _WineDetailPageContent extends StatelessWidget {
   final String wineId;
+  final User? currentUser;
+  final String? token;
 
-  const _WineDetailPageContent({required this.wineId});
+  const _WineDetailPageContent({
+    required this.wineId,
+    required this.currentUser,
+    required this.token,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final authRepo = ApplicationContainer.resolve<AuthRepository>();
-    final currentUser = authRepo.getCurrentUser();
-    final token = authRepo.getAccessToken();
+    final currentToken = token;
+    final user = currentUser;
 
     return BlocListener<ReviewFormBloc, ReviewFormState>(
       listener: (context, state) {
@@ -95,8 +111,8 @@ class _WineDetailPageContent extends StatelessWidget {
               WineDetailLoaded(:final wine) => _WineDetailContent(
                   wine: wine,
                   wineId: wineId,
-                  currentUserId: currentUser?.id,
-                  token: token,
+                  currentUserId: user?.id,
+                  token: currentToken,
                 ),
               WineDetailError(:final message) => VinumErrorWidget(
                   message: message,
@@ -107,11 +123,11 @@ class _WineDetailPageContent extends StatelessWidget {
             };
           },
         ),
-        floatingActionButton: token != null && currentUser != null
+        floatingActionButton: currentToken != null && user != null
             ? _ReviewFloatingActionButton(
                 wineId: wineId,
-                token: token,
-                currentUserId: currentUser.id,
+                token: currentToken,
+                currentUserId: user.id,
               )
             : null,
       ),
@@ -192,8 +208,8 @@ class _WineDetailContent extends StatelessWidget {
             title: Text(
               wine.name,
               style: TextStyle(
-                fontFamily: 'Amarante',
                 fontSize: 16,
+                fontWeight: FontWeight.w600,
                 color: theme.colorScheme.onPrimary,
               ),
             ),

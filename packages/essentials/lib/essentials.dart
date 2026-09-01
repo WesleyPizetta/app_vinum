@@ -13,6 +13,7 @@ export 'package:chopper/chopper.dart' hide JsonConverter, DateFormat;
 // API
 export 'api/api_client.dart';
 export 'api/curl_logging_interceptor.dart';
+export 'api/auth_header_interceptor.dart';
 
 // Base
 export 'base/use_case.dart';
@@ -33,12 +34,15 @@ export 'ui/app_theme.dart';
 export 'ui/dimens.dart';
 export 'ui/colors/color_palette.dart';
 export 'ui/colors/vinum_palette.dart';
+export 'ui/colors/vinum_dark_palette.dart';
 export 'ui/text/vinum_text_styles.dart';
 
 // Widgets
 export 'ui/widget/app_bar/vinum_app_bar.dart';
+export 'ui/widget/nav_bar/vinum_bottom_navigation_bar.dart';
 export 'ui/widget/button/primary_button.dart';
 export 'ui/widget/button/secondary_button.dart';
+export 'ui/widget/button/vinum_notification_button.dart';
 export 'ui/widget/loading/loading_widget.dart';
 export 'ui/widget/error/error_widget.dart';
 export 'ui/widget/icon/vinum_success_icon.dart';

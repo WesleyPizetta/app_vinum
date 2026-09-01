@@ -19,9 +19,17 @@ class ReviewFormBloc extends Bloc<ReviewFormEvent, ReviewFormState> {
     this._deleteReview,
     this._getReviewTags,
   ) : super(ReviewFormInitial()) {
+    on<ReviewFormReset>(_onReset);
     on<ReviewFormTagsRequested>(_onTagsRequested);
     on<ReviewFormSubmitted>(_onSubmitted);
     on<ReviewFormDeleted>(_onDeleted);
+  }
+
+  void _onReset(
+    ReviewFormReset event,
+    Emitter<ReviewFormState> emit,
+  ) {
+    emit(ReviewFormInitial());
   }
 
   Future<void> _onTagsRequested(

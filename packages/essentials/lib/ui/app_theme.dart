@@ -5,13 +5,14 @@ import 'text/vinum_text_styles.dart';
 
 class VinumTheme {
   final ColorPalette palette;
+  final Brightness brightness;
 
-  VinumTheme(this.palette);
+  VinumTheme(this.palette, {this.brightness = Brightness.light});
 
   ThemeData get themeData => ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme(
-          brightness: Brightness.light,
+          brightness: brightness,
           primary: palette.primary,
           onPrimary: palette.onPrimary,
           secondary: palette.secondary,
@@ -51,7 +52,6 @@ class VinumTheme {
             backgroundColor: palette.primary,
             foregroundColor: palette.onPrimary,
             textStyle: const TextStyle(
-              fontFamily: 'Amarante',
               fontSize: 15,
               fontWeight: FontWeight.w600,
             ),
@@ -67,7 +67,6 @@ class VinumTheme {
             foregroundColor: palette.primary,
             side: BorderSide(color: palette.primary, width: 1.5),
             textStyle: const TextStyle(
-              fontFamily: 'Amarante',
               fontSize: 15,
               fontWeight: FontWeight.w600,
             ),

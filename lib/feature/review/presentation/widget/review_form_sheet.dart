@@ -14,11 +14,14 @@ void showReviewFormSheet(
   required String token,
   Review? existingReview,
 }) {
+  final bloc = context.read<ReviewFormBloc>();
+  bloc.add(ReviewFormReset());
+
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     builder: (_) => BlocProvider.value(
-      value: context.read<ReviewFormBloc>(),
+      value: bloc,
       child: _ReviewFormSheet(
         hostContext: context,
         wineId: wineId,
