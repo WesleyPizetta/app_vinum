@@ -9,23 +9,27 @@ import 'core/di/vinum_container.dart';
 import 'environment/environment_dev.dart';
 import 'vinum_app.dart';
 
+String _requiredFirebaseWebValue(String key) {
+  final value = dotenv.env[key]?.trim();
+  if (value == null || value.isEmpty) {
+    throw StateError('Missing required Firebase web configuration: $key');
+  }
+  return value;
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: '.env');
 
   if (kIsWeb) {
-    final apiKey = dotenv.env['FIREBASE_WEB_API_KEY'] ?? dotenv.env['FIREBASE_API_KEY'];
-    final appId = dotenv.env['FIREBASE_WEB_APP_ID'] ?? dotenv.env['FIREBASE_APP_ID'];
-    final messagingSenderId = dotenv.env['FIREBASE_WEB_MESSAGING_SENDER_ID'] ?? '1234567890';
-    final projectId = dotenv.env['FIREBASE_WEB_PROJECT_ID'] ?? dotenv.env['FIREBASE_PROJECT_ID'] ?? 'vinum-dev';
-
     await Firebase.initializeApp(
       options: FirebaseOptions(
-        apiKey: apiKey ?? 'dev-api-key',
-        appId: appId ?? '1:1234567890:web:1234567890',
-        messagingSenderId: messagingSenderId,
-        projectId: projectId,
+        apiKey: _requiredFirebaseWebValue('FIREBASE_WEB_API_KEY'),
+        appId: _requiredFirebaseWebValue('FIREBASE_WEB_APP_ID'),
+        messagingSenderId:
+            _requiredFirebaseWebValue('FIREBASE_WEB_MESSAGING_SENDER_ID'),
+        projectId: _requiredFirebaseWebValue('FIREBASE_WEB_PROJECT_ID'),
       ),
     );
   } else {

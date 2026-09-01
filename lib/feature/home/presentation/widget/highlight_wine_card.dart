@@ -66,9 +66,15 @@ class HighlightWineCard extends StatelessWidget {
                   Positioned(
                     top: Dimens.spacing8,
                     right: Dimens.spacing8,
-                    child: GestureDetector(
-                      onTap: onFavoriteToggle,
-                      child: Icon(
+                    child: IconButton(
+                      onPressed: onFavoriteToggle,
+                      tooltip: getString(
+                        context,
+                        wine.isFavorite
+                            ? 'remove_from_favorites'
+                            : 'add_to_favorites',
+                      ),
+                      icon: Icon(
                         wine.isFavorite
                             ? Icons.bookmark
                             : Icons.bookmark_outline,

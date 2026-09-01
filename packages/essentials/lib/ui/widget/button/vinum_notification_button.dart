@@ -11,7 +11,7 @@ class VinumNotificationButton extends StatelessWidget {
 
   const VinumNotificationButton({
     super.key,
-    this.unreadCount = 3,
+    this.unreadCount = 0,
     this.onPressed,
     this.color,
     this.badgeColor,
@@ -26,10 +26,7 @@ class VinumNotificationButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: Dimens.spacing8),
       child: IconButton(
-        onPressed: onPressed ??
-            () {
-              // Implementação futura de notificações
-            },
+        onPressed: onPressed,
         tooltip: 'Notificações',
         icon: Badge.count(
           count: unreadCount,

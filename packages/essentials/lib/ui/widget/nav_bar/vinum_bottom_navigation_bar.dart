@@ -19,19 +19,15 @@ class VinumNavItem {
 class VinumBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final VoidCallback onScanTap;
   final List<VinumNavItem> leftItems;
   final List<VinumNavItem> rightItems;
-  final String scanLabel;
 
   const VinumBottomNavigationBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
-    required this.onScanTap,
     required this.leftItems,
     required this.rightItems,
-    required this.scanLabel,
   });
 
   @override

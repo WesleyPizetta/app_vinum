@@ -20,7 +20,7 @@ class AuthRepositoryImpl implements AuthRepository {
         _profileService = profileService,
         _secureStorage = secureStorage ?? const FlutterSecureStorage(),
         _customClient = supabaseClient {
-    _initPersistence();
+    unawaited(_initPersistence());
   }
 
   final AuthApiService _authService;
@@ -115,7 +115,12 @@ class AuthRepositoryImpl implements AuthRepository {
 
   Future<void> _clearLocalSession() async {
     try {
-      await _secureStorage.deleteAll();
+      await _secureStorage.delete(key: 'auth_access_token');
+      await _secureStorage.delete(key: 'auth_refresh_token');
+      await _secureStorage.delete(key: 'auth_user_id');
+      await _secureStorage.delete(key: 'auth_user_email');
+      await _secureStorage.delete(key: 'auth_user_name');
+      await _secureStorage.delete(key: 'auth_user_avatar_url');
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[AuthRepository] Erro ao limpar sessão segura: $e');

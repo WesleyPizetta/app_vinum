@@ -73,5 +73,7 @@
   "review_submit": "Submit",
   "review_save": "Save",
   "review_cancel": "Cancel",
-  "review_you": "You"
+  "review_you": "You",
+  "add_to_favorites": "Add to favorites",
+  "remove_from_favorites": "Remove from favorites"
 }

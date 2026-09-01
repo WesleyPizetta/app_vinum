@@ -167,10 +167,8 @@ class _HomePageState extends State<HomePage> {
           bottomNavigationBar: VinumBottomNavigationBar(
             currentIndex: _currentTabIndex,
             onTap: _onTabSelected,
-            onScanTap: _onScanPressed,
             leftItems: leftItems,
             rightItems: rightItems,
-            scanLabel: getString(context, 'nav_scan'),
           ),
         ),
       ),
@@ -315,5 +313,4 @@ class _HomeLoadedView extends StatelessWidget {
     );
   }
 }
-
 
