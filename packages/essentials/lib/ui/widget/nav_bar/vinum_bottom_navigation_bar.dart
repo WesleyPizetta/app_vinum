@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../colors/vinum_palette.dart';
 import '../../dimens.dart';
 
 /// Item de navegação para a [VinumBottomNavigationBar].
@@ -32,14 +31,18 @@ class VinumBottomNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = VinumPalette();
+    // A barra segue o tema ativo: com a cor fixa da paleta clara, os itens
+    // não selecionados (que usam a cor do tema escuro) ficavam claros sobre
+    // fundo claro e quase ilegíveis.
+    final colorScheme = Theme.of(context).colorScheme;
 
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
       notchMargin: Dimens.spacing8,
       clipBehavior: Clip.antiAlias,
       elevation: Dimens.elevationMedium,
-      color: palette.surface,
+      color: colorScheme.surface,
+      surfaceTintColor: Colors.transparent,
       child: SizedBox(
         height: 60,
         child: Row(
@@ -96,7 +99,8 @@ class _NavBarItemWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final activeColor = theme.colorScheme.primary;
-    final inactiveColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+    // Contraste suficiente para leitura nos temas claro e escuro.
+    final inactiveColor = theme.colorScheme.onSurface.withValues(alpha: 0.75);
 
     return InkWell(
       onTap: onTap,
