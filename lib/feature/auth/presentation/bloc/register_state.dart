@@ -8,7 +8,15 @@ class RegisterLoading extends RegisterState {}
 
 class RegisterSuccess extends RegisterState {
   final User user;
-  RegisterSuccess({required this.user});
+
+  /// `true` quando o usuário precisa confirmar o e-mail antes de entrar
+  /// (não há sessão ativa).
+  final bool requiresEmailConfirmation;
+
+  RegisterSuccess({
+    required this.user,
+    this.requiresEmailConfirmation = false,
+  });
 }
 
 class RegisterError extends RegisterState {

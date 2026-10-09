@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:essentials/essentials.dart';
 import 'package:flutter/foundation.dart';
@@ -6,7 +7,14 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
 import '../api/auth_api_service.dart';
+import '../../../../core/utils/json_utils.dart';
+import '../model/onboarding_question_model.dart';
+import '../model/onboarding_result_model.dart';
 import '../../../profile/data/api/profile_api_service.dart';
+import '../../domain/entity/onboarding_failure_code.dart';
+import '../../domain/entity/onboarding_question.dart';
+import '../../domain/entity/onboarding_result.dart';
+import '../../domain/entity/sign_up_result.dart';
 import '../../domain/entity/user.dart';
 import '../../domain/repository/auth_repository.dart';
 
@@ -20,8 +28,16 @@ class AuthRepositoryImpl implements AuthRepository {
         _profileService = profileService,
         _secureStorage = secureStorage ?? const FlutterSecureStorage(),
         _customClient = supabaseClient {
-    unawaited(_initPersistence());
+    _restoreFuture = _initPersistence();
   }
+
+  /// Restauração assíncrona iniciada no construtor. [restoreSession] a
+  /// aguarda para não decidir a rota inicial com dados incompletos.
+  late final Future<void> _restoreFuture;
+
+  /// Limite para buscar o perfil na abertura (o Render pode demorar a
+  /// "acordar"). Estourado, usamos o que está salvo no aparelho.
+  static const Duration _profileRefreshTimeout = Duration(seconds: 8);
 
   final AuthApiService _authService;
   final ProfileApiService _profileService;
@@ -46,18 +62,33 @@ class AuthRepositoryImpl implements AuthRepository {
       _accessToken ??= _normalizeToken(token);
       _refreshToken ??= refresh;
 
+      final id = await _secureStorage.read(key: 'auth_user_id');
+      final storedOnboarding = _readBool(await _secureStorage.read(
+            key: 'auth_user_onboarding_completed',
+          )) ??
+          false;
+
+      // O usuário pode ter sido criado antes a partir da sessão do Supabase
+      // (sem o flag de onboarding). Não perde o "onboarding concluído" salvo.
+      final existing = _currentUser;
+      if (existing != null &&
+          existing.id == id &&
+          storedOnboarding &&
+          !existing.onboardingCompleted) {
+        _currentUser = existing.copyWith(onboardingCompleted: true);
+      }
+
       if (_currentUser == null) {
-        final id = await _secureStorage.read(key: 'auth_user_id');
         final email = await _secureStorage.read(key: 'auth_user_email');
         if (id != null && id.isNotEmpty && email != null) {
           final name = await _secureStorage.read(key: 'auth_user_name');
-          final avatar =
-              await _secureStorage.read(key: 'auth_user_avatar_url');
+          final avatar = await _secureStorage.read(key: 'auth_user_avatar_url');
           _currentUser = User(
             id: id,
             email: email,
             name: name,
             avatarUrl: avatar,
+            onboardingCompleted: storedOnboarding,
           );
         }
       }
@@ -85,7 +116,8 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       if (_currentUser != null) {
-        await _secureStorage.write(key: 'auth_user_id', value: _currentUser!.id);
+        await _secureStorage.write(
+            key: 'auth_user_id', value: _currentUser!.id);
         await _secureStorage.write(
             key: 'auth_user_email', value: _currentUser!.email);
         if (_currentUser!.name != null) {
@@ -100,11 +132,16 @@ class AuthRepositoryImpl implements AuthRepository {
         } else {
           await _secureStorage.delete(key: 'auth_user_avatar_url');
         }
+        await _secureStorage.write(
+          key: 'auth_user_onboarding_completed',
+          value: _currentUser!.onboardingCompleted.toString(),
+        );
       } else {
         await _secureStorage.delete(key: 'auth_user_id');
         await _secureStorage.delete(key: 'auth_user_email');
         await _secureStorage.delete(key: 'auth_user_name');
         await _secureStorage.delete(key: 'auth_user_avatar_url');
+        await _secureStorage.delete(key: 'auth_user_onboarding_completed');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -184,8 +221,8 @@ class AuthRepositoryImpl implements AuthRepository {
             message: 'BFF returned ${response.statusCode}'));
       }
 
-      final responseBody = response.body as Map<String, dynamic>?;
-      final userMap = responseBody?['user'] as Map<String, dynamic>?;
+      final responseBody = JsonUtils.asMap(response.body);
+      final userMap = JsonUtils.asMap(responseBody?['user']);
       if (userMap == null) {
         if (kDebugMode) {
           debugPrint('[GoogleBFF] ERRO: campo "user" ausente na resposta');
@@ -203,6 +240,8 @@ class AuthRepositoryImpl implements AuthRepository {
             (userMap['full_name'] as String?) ??
             (userMap['email'] as String?),
         avatarUrl: _readString(userMap['avatar_url']),
+        onboardingCompleted:
+            _readBool(userMap['onboarding_completed']) ?? false,
       );
       _currentUser = user;
       await _warmUpProfileForAvatar();
@@ -217,7 +256,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Try<User>> signUp({
+  Future<Try<SignUpResult>> signUp({
     required String email,
     required String password,
     required String name,
@@ -233,12 +272,25 @@ class AuthRepositoryImpl implements AuthRepository {
         return Try.reject(KnownFailure('SIGN_UP_FAILED', null));
       }
       final user = _toUser(supaUser);
+      final session = response.session;
+
+      // Confirmação de e-mail ativa: o Supabase cria o usuário mas não
+      // devolve sessão. Não guardamos nada localmente — senão o app
+      // "entrava" sem token e as chamadas autenticadas falhavam com 401.
+      if (session == null) {
+        return Try.success(
+          SignUpResult(user: user, requiresEmailConfirmation: true),
+        );
+      }
+
       _currentUser = user;
-      _accessToken = _normalizeToken(response.session?.accessToken);
-      _refreshToken = response.session?.refreshToken;
+      _accessToken = _normalizeToken(session.accessToken);
+      _refreshToken = session.refreshToken;
       unawaited(_warmUpProfileForAvatar());
       await _saveLocalSession();
-      return Try.success(user);
+      return Try.success(
+        SignUpResult(user: user, requiresEmailConfirmation: false),
+      );
     } on supa.AuthException catch (e) {
       return Try.reject(
         KnownFailure(e.statusCode ?? 'AUTH_ERROR', e, message: e.message),
@@ -263,7 +315,7 @@ class AuthRepositoryImpl implements AuthRepository {
         return Try.reject(KnownFailure('AUTH_ERROR', response.error,
             message: 'BFF returned ${response.statusCode}'));
       }
-      final responseBody = response.body as Map<String, dynamic>?;
+      final responseBody = JsonUtils.asMap(response.body);
       _accessToken = _normalizeToken(responseBody?['access_token'] as String?);
       _refreshToken = responseBody?['refresh_token'] as String? ?? refreshToken;
       await _saveLocalSession();
@@ -271,6 +323,101 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (e) {
       return Try.reject(UnknownFailure(e));
     }
+  }
+
+  @override
+  Future<void> refreshCurrentUserProfile() async {
+    await _warmUpProfileForAvatar();
+  }
+
+  @override
+  Future<Try<List<OnboardingQuestion>>> getOnboardingQuiz() async {
+    try {
+      final response = await _profileService.getOnboardingQuiz();
+      if (!response.isSuccessful) {
+        return Try.reject(_onboardingHttpFailure(response));
+      }
+
+      final questions = OnboardingQuestionModel.tryParseQuiz(response.body);
+      if (questions == null) {
+        return Try.reject(KnownFailure(
+          OnboardingFailureCode.invalidResponse,
+          response.bodyString,
+          message: 'Resposta de /onboarding/quiz fora do contrato',
+        ));
+      }
+
+      return Try.success(
+        questions.map((q) => q.toEntity()).toList(growable: false),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AuthRepository] erro ao carregar quiz de onboarding: $e');
+      }
+      return Try.reject(UnknownFailure(e));
+    }
+  }
+
+  @override
+  Future<Try<OnboardingResult>> submitOnboardingQuiz({
+    required List<int> selectedOptionIds,
+  }) async {
+    try {
+      // O token é injetado pelo AuthHeaderInterceptor.
+      final response = await _profileService.submitOnboardingQuiz({
+        'selected_option_ids': selectedOptionIds,
+      });
+
+      if (!response.isSuccessful) {
+        return Try.reject(_onboardingHttpFailure(response));
+      }
+
+      return Try.success(
+        OnboardingResultModel.fromJson(response.body).toEntity(),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AuthRepository] erro ao enviar quiz de onboarding: $e');
+      }
+      return Try.reject(UnknownFailure(e));
+    }
+  }
+
+  @override
+  Future<User?> markOnboardingCompleted() async {
+    final user = getCurrentUser();
+    if (user == null) return null;
+    _currentUser = user.copyWith(onboardingCompleted: true);
+    await _saveLocalSession();
+    return _currentUser;
+  }
+
+  /// Traduz o status HTTP de uma resposta de onboarding para um
+  /// [KnownFailure] com código de [OnboardingFailureCode].
+  KnownFailure _onboardingHttpFailure(Response<dynamic> response) {
+    final statusCode = response.statusCode;
+    final String code;
+    if (statusCode == 400) {
+      code = OnboardingFailureCode.invalidAnswers;
+    } else if (statusCode == 401) {
+      code = OnboardingFailureCode.unauthorized;
+    } else if (statusCode >= 500) {
+      code = OnboardingFailureCode.server;
+    } else {
+      code = OnboardingFailureCode.requestFailed;
+    }
+
+    final backendMessage =
+        JsonUtils.readErrorMessage(response.error ?? response.bodyString);
+    if (kDebugMode) {
+      debugPrint(
+          '[AuthRepository] onboarding HTTP $statusCode -> $code ($backendMessage)');
+    }
+    return KnownFailure(
+      code,
+      response.error,
+      message: backendMessage ?? 'HTTP $statusCode',
+    );
   }
 
   @override
@@ -284,14 +431,68 @@ class AuthRepositoryImpl implements AuthRepository {
         );
       }
       await _client.auth.signOut();
+      return Try.success(null);
+    } catch (e) {
+      return Try.reject(UnknownFailure(e));
+    } finally {
+      // Sempre limpa o estado em memória: sem isso, uma falha de rede no
+      // logout mantinha o usuário "logado" e o LoginPage o redirecionava de
+      // volta (ex.: loop sessão expirada -> login -> onboarding).
       _accessToken = null;
       _refreshToken = null;
       _currentUser = null;
       await _clearLocalSession();
-      return Try.success(null);
-    } catch (e) {
-      await _clearLocalSession();
-      return Try.reject(UnknownFailure(e));
+    }
+  }
+
+  @override
+  Future<User?> restoreSession() async {
+    await _restoreFuture;
+
+    final user = getCurrentUser();
+    final token = getAccessToken();
+    if (user == null || token == null || token.isEmpty) return null;
+
+    // Access token do Supabase expira (~1h). Se o salvo venceu, renova com o
+    // refresh token; sem conseguir renovar, pede login de novo em vez de
+    // abrir o app e tomar 401 em todas as chamadas.
+    if (_isExpired(token)) {
+      final refreshed = await refreshSession();
+      if (refreshed.isLeft()) {
+        if (kDebugMode) {
+          debugPrint('[AuthRepository] sessão expirada e refresh falhou');
+        }
+        return null;
+      }
+    }
+
+    // Fonte da verdade do onboarding é a API (existe taste_profile?).
+    // Falha/timeout: segue com o valor salvo localmente.
+    try {
+      await _warmUpProfileForAvatar().timeout(_profileRefreshTimeout);
+    } on TimeoutException {
+      if (kDebugMode) {
+        debugPrint('[AuthRepository] /me/profile demorou; usando sessão local');
+      }
+    }
+    return _currentUser;
+  }
+
+  /// `true` se o JWT vence em menos de 60s (ou não dá para ler o `exp`).
+  bool _isExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return false;
+      final payload = JsonUtils.asMap(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      );
+      final exp = JsonUtils.readInt(payload?['exp']);
+      if (exp == null) return false;
+      final expiresAt = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      return DateTime.now()
+          .isAfter(expiresAt.subtract(const Duration(seconds: 60)));
+    } catch (_) {
+      return false;
     }
   }
 
@@ -342,17 +543,23 @@ class AuthRepositoryImpl implements AuthRepository {
         return;
       }
 
-      final body = response.body;
-      if (body is! Map<String, dynamic>) {
+      final body = JsonUtils.asMap(response.body);
+      if (body == null) {
         return;
       }
 
-      final current = _currentUser!;
+      final current = _currentUser;
+      if (current == null) return;
       _currentUser = User(
-        id: _readString(body['id']) ?? current.id,
+        // `/v1/me/profile` retorna "user_id"; "id" mantido por compatibilidade.
+        id: _readString(body['user_id']) ??
+            _readString(body['id']) ??
+            current.id,
         email: _readString(body['email']) ?? current.email,
         name: _readString(body['full_name']) ?? current.name,
         avatarUrl: _readString(body['avatar_url']) ?? current.avatarUrl,
+        onboardingCompleted: _readBool(body['onboarding_completed']) ??
+            current.onboardingCompleted,
       );
       await _saveLocalSession();
     } catch (e) {
@@ -362,16 +569,9 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  String? _readString(dynamic value) {
-    if (value is! String) {
-      return null;
-    }
-    final normalized = value.trim();
-    if (normalized.isEmpty) {
-      return null;
-    }
-    return normalized;
-  }
+  String? _readString(dynamic value) => JsonUtils.readString(value);
+
+  bool? _readBool(dynamic value) => JsonUtils.readBool(value);
 
   String _toAuthorization(String token) {
     final normalized = token.trim();

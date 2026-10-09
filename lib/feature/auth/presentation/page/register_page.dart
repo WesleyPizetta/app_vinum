@@ -15,13 +15,35 @@ class RegisterPage extends StatelessWidget {
       create: (_) => ApplicationContainer.resolve<RegisterBloc>(),
       child: BlocListener<RegisterBloc, RegisterState>(
         listener: (context, state) {
-          if (state is RegisterSuccess) {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              ApplicationRoute.login,
-              (_) => false,
-            );
+          if (state is! RegisterSuccess) return;
+
+          void goToLogin() => Navigator.pushNamedAndRemoveUntil(
+                context,
+                ApplicationRoute.login,
+                (_) => false,
+              );
+
+          if (!state.requiresEmailConfirmation) {
+            goToLogin();
+            return;
           }
+
+          // Conta criada, mas sem sessão: o usuário precisa confirmar o
+          // e-mail antes de fazer login.
+          showVinumFeedbackModal<void>(
+            context,
+            icon: Icon(
+              Icons.mark_email_unread_outlined,
+              size: Dimens.iconLarge,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            message: getString(context, 'register_confirm_email')
+                .replaceAll('{email}', state.user.email),
+            primaryButtonText:
+                getString(context, 'register_confirm_email_button'),
+            barrierDismissible: false,
+            onPrimaryPressed: goToLogin,
+          );
         },
         child: Scaffold(
           appBar: VinumAppBar(

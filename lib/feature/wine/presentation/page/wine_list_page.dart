@@ -27,7 +27,7 @@ class WineListPage extends StatelessWidget {
               WineListLoading() => const LoadingWidget(),
               WineListLoaded(:final wines) => _WineList(wines: wines),
               WineListError(:final message) => VinumErrorWidget(
-                  message: message,
+                  message: getString(context, message),
                   onRetry: () =>
                       context.read<WineListBloc>().add(WineListStarted()),
                 ),
@@ -111,21 +111,27 @@ class _WineCard extends StatelessWidget {
                     const SizedBox(height: Dimens.spacing4),
                     Row(
                       children: [
-                        Text(
-                          wine.grape,
-                          style: theme.textTheme.labelMedium,
+                        Flexible(
+                          child: Text(
+                            wine.grape,
+                            style: theme.textTheme.labelMedium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         const Spacer(),
-                        Icon(
-                          Icons.star_rounded,
-                          size: 16,
-                          color: theme.colorScheme.secondary,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          wine.rating.toStringAsFixed(1),
-                          style: theme.textTheme.labelMedium,
-                        ),
+                        if (wine.hasRating) ...[
+                          Icon(
+                            Icons.star_rounded,
+                            size: 16,
+                            color: theme.colorScheme.secondary,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            wine.rating.toStringAsFixed(1),
+                            style: theme.textTheme.labelMedium,
+                          ),
+                        ],
                       ],
                     ),
                   ],

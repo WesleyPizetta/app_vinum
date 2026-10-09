@@ -24,7 +24,7 @@ class RecommendedWinesHorizontalList extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 160,
+      height: RecommendedWineCard.height,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,

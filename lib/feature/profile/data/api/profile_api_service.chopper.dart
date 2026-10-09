@@ -34,4 +34,28 @@ final class _$ProfileApiService extends ProfileApiService {
     );
     return client.send<dynamic, dynamic>($request);
   }
+
+  @override
+  Future<Response<dynamic>> getOnboardingQuiz() {
+    final Uri $url = Uri.parse('/v1/onboarding/quiz');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> submitOnboardingQuiz(Map<String, dynamic> body) {
+    final Uri $url = Uri.parse('/v1/onboarding/quiz/submit');
+    final $body = body;
+    final Request $request = Request(
+      'POST',
+      $url,
+      client.baseUrl,
+      body: $body,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
 }

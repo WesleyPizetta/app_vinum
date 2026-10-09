@@ -1,3 +1,4 @@
+import '../model/wine_highlights_model.dart';
 import '../model/wine_model.dart';
 import 'wine_datasource.dart';
 
@@ -90,6 +91,15 @@ class WineMockDatasource implements WineDatasource {
     return _mockWines.firstWhere(
       (w) => w.id == id,
       orElse: () => throw Exception('Vinho não encontrado'),
+    );
+  }
+
+  @override
+  Future<WineHighlightsModel> getHighlights({int limit = 10}) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return WineHighlightsModel(
+      week: '',
+      wines: _mockWines.take(limit < 0 ? 0 : limit).toList(),
     );
   }
 }

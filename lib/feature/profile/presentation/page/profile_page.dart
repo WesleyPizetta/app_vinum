@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/navigation/application_route.dart';
 import '../../../../core/widgets/app_version_badge.dart';
 import '../../../auth/domain/entity/user.dart';
+import '../../../auth/presentation/page/onboarding_args.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
@@ -102,6 +103,11 @@ class _ProfileContent extends StatelessWidget {
           ),
           const Spacer(),
           SecondaryButton(
+            text: getString(context, 'profile_retake_quiz'),
+            onPressed: () => _retakeQuiz(context),
+          ),
+          const SizedBox(height: Dimens.spacing12),
+          SecondaryButton(
             text: getString(context, 'settings'),
             onPressed: () =>
                 Navigator.pushNamed(context, ApplicationRoute.settings),
@@ -124,6 +130,24 @@ class _ProfileContent extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Abre o quiz em modo "refazer". Se o perfil de gosto foi atualizado,
+  /// volta para quem abriu o perfil (ex.: home) com `true`, para que as
+  /// recomendações sejam recarregadas.
+  Future<void> _retakeQuiz(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final successMessage = getString(context, 'profile_retake_quiz_success');
+
+    final updated = await navigator.pushNamed<Object?>(
+      ApplicationRoute.onboarding,
+      arguments: const OnboardingArgs(retake: true),
+    );
+    if (updated != true) return;
+
+    messenger.showSnackBar(SnackBar(content: Text(successMessage)));
+    if (navigator.canPop()) navigator.pop(true);
   }
 
   String _getInitials(User user) {

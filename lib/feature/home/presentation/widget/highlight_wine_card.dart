@@ -2,13 +2,19 @@ import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/entity/highlight_wine.dart';
+import 'wine_type_label.dart';
 
-/// Card individual para os "Destaques da Semana" exibindo o banner do rótulo,
-/// nome do vinho, avaliação com estrela e contagem de visualizações/avaliações.
+/// Card individual para os "Destaques da Semana" exibindo o banner (cor pelo
+/// tipo do vinho), nome, nota média com estrela (quando houver avaliações) e
+/// o tipo traduzido.
 class HighlightWineCard extends StatelessWidget {
   final HighlightWine wine;
   final VoidCallback onFavoriteToggle;
   final VoidCallback onTap;
+
+  /// Altura fixa do card (a lista horizontal usa o mesmo valor).
+  static const double height = 195;
+  static const double width = 140;
 
   const HighlightWineCard({
     super.key,
@@ -17,17 +23,33 @@ class HighlightWineCard extends StatelessWidget {
     required this.onTap,
   });
 
+  /// Cor do banner de acordo com o tipo vindo da API.
+  static Color bannerColorFor(String? type) {
+    final normalized = (type ?? '').toLowerCase().replaceAll('é', 'e');
+    if (normalized.contains('sparkling')) return const Color(0xFF2C5570);
+    if (normalized.contains('rose')) return const Color(0xFFB5566E);
+    if (normalized.contains('dessert') || normalized.contains('port')) {
+      return const Color(0xFF6A3F7A);
+    }
+    if (normalized.contains('white')) return const Color(0xFFCFA035);
+    if (normalized.contains('red')) return const Color(0xFF6B1F32);
+    return const Color(0xFF4A121A);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final palette = VinumPalette();
+    final rating = wine.hasRating ? wine.rating : null;
+    final typeLabel = wineTypeLabel(context, wine.type);
+    final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(Dimens.radiusLarge),
       child: Container(
-        width: 140,
-        height: 195,
+        width: width,
+        height: height,
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(Dimens.radiusLarge),
@@ -46,7 +68,7 @@ class HighlightWineCard extends StatelessWidget {
             Container(
               height: 105,
               decoration: BoxDecoration(
-                color: wine.bannerColor,
+                color: bannerColorFor(wine.type),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(Dimens.radiusLarge),
                   topRight: Radius.circular(Dimens.radiusLarge),
@@ -89,7 +111,7 @@ class HighlightWineCard extends StatelessWidget {
               ),
             ),
 
-            // Informações inferiores: Nome, Nota e Contagem de Visualizações
+            // Informações inferiores: nome, nota e tipo
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -110,32 +132,38 @@ class HighlightWineCard extends StatelessWidget {
                       ),
                     ),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.star_rounded,
-                              size: Dimens.iconSmall,
-                              color: palette.secondary,
+                        // Nota média (0–10); sem avaliações não aparece.
+                        if (rating != null) ...[
+                          Icon(
+                            Icons.star_rounded,
+                            size: Dimens.iconSmall,
+                            color: palette.secondary,
+                          ),
+                          const SizedBox(width: Dimens.spacing2),
+                          Text(
+                            rating.toStringAsFixed(1),
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(width: Dimens.spacing2),
-                            Text(
-                              wine.rating.toStringAsFixed(1),
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
+                          ),
+                          const SizedBox(width: Dimens.spacing8),
+                        ],
+                        if (typeLabel != null)
+                          Expanded(
+                            child: Text(
+                              typeLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: rating != null
+                                  ? TextAlign.end
+                                  : TextAlign.start,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: mutedColor,
+                                fontSize: 11,
                               ),
                             ),
-                          ],
-                        ),
-                        Text(
-                          wine.viewsCountLabel,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
-                            fontSize: 11,
                           ),
-                        ),
                       ],
                     ),
                   ],

@@ -11,10 +11,18 @@ import '../../../../feature/review/presentation/bloc/review_list_event.dart';
 import '../../../../feature/review/presentation/bloc/review_list_state.dart';
 import '../../../../feature/review/presentation/widget/review_card.dart';
 import '../../../../feature/review/presentation/widget/review_form_sheet.dart';
+import '../../../explore/domain/entity/learn_topic.dart';
+import '../../../explore/presentation/widget/learn_topic_sheet.dart';
+import '../../../favorites/presentation/widget/favorite_icon_button.dart';
+import '../../../home/presentation/widget/wine_type_label.dart';
 import '../../domain/entity/wine.dart';
 import '../bloc/wine_detail_bloc.dart';
 import '../bloc/wine_detail_event.dart';
 import '../bloc/wine_detail_state.dart';
+import '../bloc/wine_match_bloc.dart';
+import '../bloc/wine_match_event.dart';
+import '../widget/wine_labels.dart';
+import '../widget/wine_match_section.dart';
 
 class WineDetailPage extends StatelessWidget {
   final AuthRepository? authRepository;
@@ -41,6 +49,11 @@ class WineDetailPage extends StatelessWidget {
         ),
         BlocProvider(
           create: (_) => ApplicationContainer.resolve<ReviewFormBloc>(),
+        ),
+        // "Por que este vinho combina com você?" (falhas só ocultam a seção).
+        BlocProvider(
+          create: (_) => ApplicationContainer.resolve<WineMatchBloc>()
+            ..add(WineMatchStarted(wineId: wineId)),
         ),
       ],
       child: _WineDetailPageContent(
@@ -114,11 +127,25 @@ class _WineDetailPageContent extends StatelessWidget {
                   currentUserId: user?.id,
                   token: currentToken,
                 ),
-              WineDetailError(:final message) => VinumErrorWidget(
-                  message: message,
-                  onRetry: () => context
-                      .read<WineDetailBloc>()
-                      .add(WineDetailStarted(wineId: wineId)),
+              WineDetailError(:final message) => SafeArea(
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: BackButton(
+                          onPressed: () => Navigator.of(context).maybePop(),
+                        ),
+                      ),
+                      Expanded(
+                        child: VinumErrorWidget(
+                          message: getString(context, message),
+                          onRetry: () => context
+                              .read<WineDetailBloc>()
+                              .add(WineDetailStarted(wineId: wineId)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
             };
           },
@@ -198,12 +225,55 @@ class _WineDetailContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final origin = [wine.region, wine.country]
+        .where((part) => part.trim().isNotEmpty)
+        .join(', ');
+    final typeLabel = wineTypeLabel(context, wine.type);
+    // Tipo, corpo e acidez abrem o conteúdo educativo do Explorar.
+    final chips = <_InfoChip>[
+      if (typeLabel != null)
+        _InfoChip(
+          icon: Icons.wine_bar,
+          label: typeLabel,
+          onTap: () => showLearnTopicSheet(context, LearnTopic.types),
+        ),
+      if (wine.grape.isNotEmpty) _InfoChip(icon: Icons.grass, label: wine.grape),
+      if (wine.body.isNotEmpty)
+        _InfoChip(
+          icon: Icons.water_drop_outlined,
+          label: translateWineLabel(context, 'wine_body', wine.body),
+          onTap: () => showLearnTopicSheet(context, LearnTopic.body),
+        ),
+      if (wine.acidity.isNotEmpty)
+        _InfoChip(
+          icon: Icons.bolt_outlined,
+          label:
+              '${getString(context, 'wine_acidity')}: ${translateWineLabel(context, 'wine_level', wine.acidity)}',
+          onTap: () => showLearnTopicSheet(context, LearnTopic.acidity),
+        ),
+      if (wine.abv != null)
+        _InfoChip(
+          icon: Icons.percent,
+          label: '${wine.abv!.toStringAsFixed(1)}%',
+        ),
+      if (wine.vintage > 0)
+        _InfoChip(icon: Icons.calendar_today, label: '${wine.vintage}'),
+      if (wine.hasRating)
+        _InfoChip(
+          icon: Icons.star_rounded,
+          label: '${wine.rating.toStringAsFixed(1)} (${wine.ratingCount})',
+        ),
+    ];
 
     return CustomScrollView(
       slivers: [
         SliverAppBar(
           expandedHeight: 240,
           pinned: true,
+          actions: [
+            // Sincronizado com o cache de favoritos (home, listas, coleções).
+            FavoriteIconButton(wineId: wineId),
+          ],
           flexibleSpace: FlexibleSpaceBar(
             title: Text(
               wine.name,
@@ -230,37 +300,59 @@ class _WineDetailContent extends StatelessWidget {
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               // Vinícola e região
-              Text(wine.winery, style: theme.textTheme.headlineMedium),
-              const SizedBox(height: Dimens.spacing4),
-              Text(
-                '${wine.region}, ${wine.country}',
-                style: theme.textTheme.bodyMedium,
-              ),
+              if (wine.winery.isNotEmpty)
+                Text(wine.winery, style: theme.textTheme.headlineMedium),
+              if (origin.isNotEmpty) ...[
+                const SizedBox(height: Dimens.spacing4),
+                Text(origin, style: theme.textTheme.bodyMedium),
+              ],
               const SizedBox(height: Dimens.spacing24),
 
               // Info chips
-              Wrap(
-                spacing: Dimens.spacing8,
-                runSpacing: Dimens.spacing8,
-                children: [
-                  _InfoChip(icon: Icons.grass, label: wine.grape),
-                  _InfoChip(
-                      icon: Icons.calendar_today, label: '${wine.vintage}'),
-                  _InfoChip(
-                      icon: Icons.star_rounded,
-                      label: wine.rating.toStringAsFixed(1)),
-                ],
-              ),
-              const SizedBox(height: Dimens.spacing24),
+              if (chips.isNotEmpty) ...[
+                Wrap(
+                  spacing: Dimens.spacing8,
+                  runSpacing: Dimens.spacing8,
+                  children: chips,
+                ),
+                const SizedBox(height: Dimens.spacing24),
+              ],
 
-              // Descrição
-              Text(
-                getString(context, 'wine_description'),
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: Dimens.spacing8),
-              Text(wine.description, style: theme.textTheme.bodyLarge),
-              const SizedBox(height: Dimens.spacing32),
+              // Por que este vinho combina com você? (oculta sem quiz/erro;
+              // inclui o próprio espaçamento inferior quando visível)
+              WineMatchSection(wineId: wineId),
+
+              // Descrição (tipo de elaboração, ex.: "Varietal/100%")
+              if (wine.description.isNotEmpty) ...[
+                Text(
+                  getString(context, 'wine_description'),
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: Dimens.spacing8),
+                Text(wine.description, style: theme.textTheme.bodyLarge),
+                const SizedBox(height: Dimens.spacing24),
+              ],
+
+              // Harmonização
+              if (wine.harmonize.isNotEmpty) ...[
+                Text(
+                  getString(context, 'wine_harmonize'),
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: Dimens.spacing8),
+                Wrap(
+                  spacing: Dimens.spacing8,
+                  runSpacing: Dimens.spacing8,
+                  children: wine.harmonize
+                      .map((food) => _InfoChip(
+                            icon: Icons.restaurant,
+                            label: translateWineLabel(
+                                context, 'wine_food', food),
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: Dimens.spacing32),
+              ],
 
               // Avaliações
               Text(
@@ -347,15 +439,40 @@ class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _InfoChip({required this.icon, required this.label});
+  /// Quando informado, o chip é tocável (ex.: abre o conteúdo educativo) e
+  /// mostra um ícone de ajuda.
+  final VoidCallback? onTap;
+
+  const _InfoChip({required this.icon, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final avatar = Icon(icon, size: 16, color: theme.colorScheme.primary);
+    final onTap = this.onTap;
 
-    return Chip(
-      avatar: Icon(icon, size: 16, color: theme.colorScheme.primary),
-      label: Text(label, style: theme.textTheme.labelMedium),
+    if (onTap == null) {
+      return Chip(
+        avatar: avatar,
+        label: Text(label, style: theme.textTheme.labelMedium),
+      );
+    }
+
+    return ActionChip(
+      avatar: avatar,
+      onPressed: onTap,
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(child: Text(label, style: theme.textTheme.labelMedium)),
+          const SizedBox(width: Dimens.spacing4),
+          Icon(
+            Icons.help_outline,
+            size: 14,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+        ],
+      ),
     );
   }
 }

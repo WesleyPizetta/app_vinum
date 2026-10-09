@@ -32,26 +32,30 @@ void main() {
 
   group('LoginSessionChecked', () {
     blocTest<LoginBloc, LoginState>(
-      'emits [LoginSuccess] quando já existe sessão ativa',
+      'emits [LoginLoading, LoginSuccess] quando a sessão restaurada é válida',
       build: () {
-        when(() => mockAuthRepository.getCurrentUser()).thenReturn(_tUser);
+        when(() => mockAuthRepository.restoreSession())
+            .thenAnswer((_) async => _tUser.copyWith(onboardingCompleted: true));
         return LoginBloc(mockSignIn, mockAuthRepository);
       },
       act: (bloc) => bloc.add(LoginSessionChecked()),
       expect: () => [
+        isA<LoginLoading>(),
         isA<LoginSuccess>()
-            .having((s) => s.user.email, 'email', _tUser.email),
+            .having((s) => s.user.email, 'email', _tUser.email)
+            .having((s) => s.user.onboardingCompleted, 'onboarding', true),
       ],
     );
 
     blocTest<LoginBloc, LoginState>(
-      'não emite nada quando não há sessão ativa',
+      'volta para LoginInitial quando não há sessão válida',
       build: () {
-        when(() => mockAuthRepository.getCurrentUser()).thenReturn(null);
+        when(() => mockAuthRepository.restoreSession())
+            .thenAnswer((_) async => null);
         return LoginBloc(mockSignIn, mockAuthRepository);
       },
       act: (bloc) => bloc.add(LoginSessionChecked()),
-      expect: () => [],
+      expect: () => [isA<LoginLoading>(), isA<LoginInitial>()],
     );
   });
 

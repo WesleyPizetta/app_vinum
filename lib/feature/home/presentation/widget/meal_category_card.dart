@@ -2,15 +2,20 @@ import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/navigation/application_route.dart';
+import '../../domain/entity/food_category.dart';
 
 class MealCategoryItem {
   final String labelKey;
+
+  /// Categoria enviada como `food` para a API.
+  final FoodCategory food;
   final Color backgroundColor;
   final String? svgAsset;
   final IconData? fallbackIcon;
 
   const MealCategoryItem({
     required this.labelKey,
+    required this.food,
     required this.backgroundColor,
     this.svgAsset,
     this.fallbackIcon,
@@ -28,7 +33,11 @@ class MealCategoryCard extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        Navigator.pushNamed(context, ApplicationRoute.wineList);
+        Navigator.pushNamed(
+          context,
+          ApplicationRoute.foodWines,
+          arguments: item.food,
+        );
       },
       borderRadius: BorderRadius.circular(Dimens.radiusLarge),
       child: Container(

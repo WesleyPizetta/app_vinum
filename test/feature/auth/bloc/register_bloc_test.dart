@@ -2,6 +2,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:essentials/essentials.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:vinum/feature/auth/domain/entity/sign_up_result.dart';
 import 'package:vinum/feature/auth/domain/entity/user.dart';
 import 'package:vinum/feature/auth/domain/usecase/sign_up.dart';
 import 'package:vinum/feature/auth/presentation/bloc/register_bloc.dart';
@@ -29,8 +30,9 @@ void main() {
     blocTest<RegisterBloc, RegisterState>(
       'emite [RegisterLoading, RegisterSuccess] em caso de sucesso',
       build: () {
-        when(() => mockSignUp(any()))
-            .thenAnswer((_) async => Try.success(_tUser));
+        when(() => mockSignUp(any())).thenAnswer((_) async => Try.success(
+              const SignUpResult(user: _tUser, requiresEmailConfirmation: false),
+            ));
         return RegisterBloc(mockSignUp);
       },
       act: (bloc) => bloc.add(
@@ -43,7 +45,30 @@ void main() {
       expect: () => [
         isA<RegisterLoading>(),
         isA<RegisterSuccess>()
-            .having((s) => s.user.email, 'email', _tUser.email),
+            .having((s) => s.user.email, 'email', _tUser.email)
+            .having((s) => s.requiresEmailConfirmation, 'confirm', false),
+      ],
+    );
+
+    blocTest<RegisterBloc, RegisterState>(
+      'sinaliza confirmação de e-mail quando não há sessão',
+      build: () {
+        when(() => mockSignUp(any())).thenAnswer((_) async => Try.success(
+              const SignUpResult(user: _tUser, requiresEmailConfirmation: true),
+            ));
+        return RegisterBloc(mockSignUp);
+      },
+      act: (bloc) => bloc.add(
+        RegisterSubmitted(
+          name: 'New User',
+          email: 'new@example.com',
+          password: '123456',
+        ),
+      ),
+      expect: () => [
+        isA<RegisterLoading>(),
+        isA<RegisterSuccess>()
+            .having((s) => s.requiresEmailConfirmation, 'confirm', true),
       ],
     );
 

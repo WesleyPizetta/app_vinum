@@ -16,12 +16,20 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     on<LoginSocialSubmitted>(_onSocialSubmitted);
   }
 
-  void _onSessionChecked(
+  Future<void> _onSessionChecked(
     LoginSessionChecked event,
     Emitter<LoginState> emit,
-  ) {
-    final user = _authRepository.getCurrentUser();
-    if (user != null) emit(LoginSuccess(user: user));
+  ) async {
+    emit(LoginLoading());
+    // Aguarda a sessão salva ser restaurada e o perfil (onboarding) ser
+    // atualizado pela API antes de decidir entre home e quiz. Sem sessão
+    // válida (ex.: cadastro aguardando confirmação de e-mail) fica no login.
+    final user = await _authRepository.restoreSession();
+    if (user != null) {
+      emit(LoginSuccess(user: user));
+    } else {
+      emit(LoginInitial());
+    }
   }
 
   Future<void> _onSubmitted(

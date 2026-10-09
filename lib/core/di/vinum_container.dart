@@ -3,22 +3,46 @@ import 'package:essentials/essentials.dart';
 import '../../feature/auth/data/api/auth_api_service.dart';
 import '../../feature/auth/data/repository/auth_repository_impl.dart';
 import '../../feature/auth/domain/repository/auth_repository.dart';
+import '../../feature/auth/domain/usecase/get_onboarding_quiz.dart';
 import '../../feature/auth/domain/usecase/sign_in.dart';
+import '../../feature/auth/domain/usecase/submit_onboarding_quiz.dart';
 import '../../feature/auth/domain/usecase/sign_up.dart';
 import '../../feature/auth/domain/usecase/logout.dart';
 import '../../feature/auth/presentation/bloc/login_bloc.dart';
+import '../../feature/auth/presentation/bloc/onboarding_bloc.dart';
 import '../../feature/auth/presentation/bloc/register_bloc.dart';
+import '../../feature/favorites/data/api/favorite_api_service.dart';
+import '../../feature/favorites/data/repository/favorites_repository_impl.dart';
+import '../../feature/favorites/domain/repository/favorites_repository.dart';
+import '../../feature/favorites/domain/usecase/get_favorites.dart';
+import '../../feature/favorites/domain/usecase/load_favorite_ids.dart';
+import '../../feature/favorites/domain/usecase/set_favorite.dart';
+import '../../feature/favorites/domain/usecase/watch_favorite_ids.dart';
+import '../../feature/favorites/presentation/bloc/favorites_list_bloc.dart';
+import '../../feature/favorites/presentation/bloc/wine_favorite_bloc.dart';
+import '../../feature/home/data/api/recommendation_api_service.dart';
+import '../../feature/home/data/repository/recommendation_repository_impl.dart';
+import '../../feature/home/domain/repository/recommendation_repository.dart';
+import '../../feature/home/domain/usecase/get_food_recommendations.dart';
+import '../../feature/home/domain/usecase/get_recommendations.dart';
+import '../../feature/home/domain/usecase/get_wine_match.dart';
+import '../../feature/home/domain/usecase/search_wines.dart';
+import '../../feature/home/presentation/bloc/food_wines_bloc.dart';
 import '../../feature/home/presentation/bloc/home_bloc.dart';
+import '../../feature/home/presentation/bloc/search_bloc.dart';
 import '../../feature/profile/data/api/profile_api_service.dart';
 import '../../feature/profile/presentation/bloc/profile_bloc.dart';
 import '../../feature/wine/data/datasource/wine_datasource.dart';
-import '../../feature/wine/data/datasource/wine_mock_datasource.dart';
+import '../../feature/wine/data/api/wine_api_service.dart';
+import '../../feature/wine/data/datasource/wine_remote_datasource.dart';
 import '../../feature/wine/data/repository/wine_repository_impl.dart';
 import '../../feature/wine/domain/repository/wine_repository.dart';
 import '../../feature/wine/domain/usecase/get_wine_by_id.dart';
+import '../../feature/wine/domain/usecase/get_wine_highlights.dart';
 import '../../feature/wine/domain/usecase/get_wines.dart';
 import '../../feature/wine/presentation/bloc/wine_detail_bloc.dart';
 import '../../feature/wine/presentation/bloc/wine_list_bloc.dart';
+import '../../feature/wine/presentation/bloc/wine_match_bloc.dart';
 import '../../feature/review/data/api/review_api_service.dart';
 import '../../feature/review/data/datasource/review_datasource.dart';
 import '../../feature/review/data/datasource/review_remote_datasource.dart';
@@ -31,17 +55,10 @@ import '../../feature/review/domain/usecase/update_review.dart';
 import '../../feature/review/domain/usecase/delete_review.dart';
 import '../../feature/review/presentation/bloc/review_list_bloc.dart';
 import '../../feature/review/presentation/bloc/review_form_bloc.dart';
-import '../../feature/explore/data/datasource/explore_datasource.dart';
-import '../../feature/explore/data/datasource/explore_mock_datasource.dart';
-import '../../feature/explore/data/repository/explore_repository_impl.dart';
-import '../../feature/explore/domain/repository/explore_repository.dart';
-import '../../feature/explore/domain/usecase/get_explore_items.dart';
-import '../../feature/explore/presentation/bloc/explore_bloc.dart';
-import '../../feature/cellar/data/datasource/cellar_datasource.dart';
-import '../../feature/cellar/data/datasource/cellar_mock_datasource.dart';
+import '../../feature/cellar/data/api/cellar_api_service.dart';
 import '../../feature/cellar/data/repository/cellar_repository_impl.dart';
 import '../../feature/cellar/domain/repository/cellar_repository.dart';
-import '../../feature/cellar/domain/usecase/get_cellar_items.dart';
+import '../../feature/cellar/domain/usecase/get_my_reviews.dart';
 import '../../feature/cellar/presentation/bloc/cellar_bloc.dart';
 import '../../feature/collections/data/datasource/collections_datasource.dart';
 import '../../feature/collections/data/datasource/collections_mock_datasource.dart';
@@ -71,11 +88,15 @@ class VinumContainer {
           AuthApiService.create(),
           ReviewApiService.create(),
           ProfileApiService.create(),
-          // WineApiService.create(), // descomentar quando API real estiver pronta
+          RecommendationApiService.create(),
+          WineApiService.create(),
+          FavoriteApiService.create(),
+          CellarApiService.create(),
         ],
         interceptors: [
           AuthHeaderInterceptor(
-            () => ApplicationContainer.resolve<AuthRepository>().getAccessToken(),
+            () =>
+                ApplicationContainer.resolve<AuthRepository>().getAccessToken(),
           ),
         ],
       ),
@@ -89,6 +110,39 @@ class VinumContainer {
     ApplicationContainer.registerLazySingleton<ProfileApiService>(
       () => ApplicationContainer.resolve<ChopperClient>()
           .getService<ProfileApiService>(),
+    );
+    ApplicationContainer.registerLazySingleton<RecommendationApiService>(
+      () => ApplicationContainer.resolve<ChopperClient>()
+          .getService<RecommendationApiService>(),
+    );
+    ApplicationContainer.registerLazySingleton<FavoriteApiService>(
+      () => ApplicationContainer.resolve<ChopperClient>()
+          .getService<FavoriteApiService>(),
+    );
+    ApplicationContainer.registerLazySingleton<CellarApiService>(
+      () => ApplicationContainer.resolve<ChopperClient>()
+          .getService<CellarApiService>(),
+    );
+
+    // ── Favoritos (cache em memória compartilhado entre as telas) ──
+    ApplicationContainer.registerLazySingleton<FavoritesRepository>(
+      () => FavoritesRepositoryImpl(
+        ApplicationContainer.resolve<FavoriteApiService>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<LoadFavoriteIds>(
+      () =>
+          LoadFavoriteIds(ApplicationContainer.resolve<FavoritesRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<SetFavorite>(
+      () => SetFavorite(ApplicationContainer.resolve<FavoritesRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<GetFavorites>(
+      () => GetFavorites(ApplicationContainer.resolve<FavoritesRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<WatchFavoriteIds>(
+      () =>
+          WatchFavoriteIds(ApplicationContainer.resolve<FavoritesRepository>()),
     );
 
     // ── Auth ──
@@ -105,7 +159,11 @@ class VinumContainer {
       () => SignUp(ApplicationContainer.resolve<AuthRepository>()),
     );
     ApplicationContainer.registerLazySingleton<Logout>(
-      () => Logout(ApplicationContainer.resolve<AuthRepository>()),
+      () => Logout(
+        ApplicationContainer.resolve<AuthRepository>(),
+        // Caches da sessão limpos a cada logout (inclui sessão expirada).
+        [ApplicationContainer.resolve<FavoritesRepository>()],
+      ),
     );
     ApplicationContainer.registerFactory<LoginBloc>(
       () => LoginBloc(
@@ -116,6 +174,21 @@ class VinumContainer {
     ApplicationContainer.registerFactory<RegisterBloc>(
       () => RegisterBloc(ApplicationContainer.resolve<SignUp>()),
     );
+    ApplicationContainer.registerLazySingleton<GetOnboardingQuiz>(
+      () => GetOnboardingQuiz(ApplicationContainer.resolve<AuthRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<SubmitOnboardingQuiz>(
+      () => SubmitOnboardingQuiz(
+        ApplicationContainer.resolve<AuthRepository>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<OnboardingBloc>(
+      () => OnboardingBloc(
+        ApplicationContainer.resolve<GetOnboardingQuiz>(),
+        ApplicationContainer.resolve<SubmitOnboardingQuiz>(),
+        ApplicationContainer.resolve<Logout>(),
+      ),
+    );
     ApplicationContainer.registerFactory<ProfileBloc>(
       () => ProfileBloc(
         ApplicationContainer.resolve<AuthRepository>(),
@@ -124,19 +197,16 @@ class VinumContainer {
     );
 
     // ── Chopper WineApiService ──
-    // TODO: Descomentar quando a API real estiver disponível
-    // ApplicationContainer.registerLazySingleton<WineApiService>(
-    //   () => ApplicationContainer.resolve<ChopperClient>()
-    //       .getService<WineApiService>(),
-    // );
+    ApplicationContainer.registerLazySingleton<WineApiService>(
+      () => ApplicationContainer.resolve<ChopperClient>()
+          .getService<WineApiService>(),
+    );
 
     // ── Datasources ──
-    // TODO: Trocar WineMockDatasource por WineRemoteDatasource para dados reais:
-    // ApplicationContainer.registerLazySingleton<WineDatasource>(
-    //   () => WineRemoteDatasource(ApplicationContainer.resolve<WineApiService>()),
-    // );
+    // Vinhos reais do BFF (GET /v1/wines e /v1/wines/{id}).
+    // O WineMockDatasource continua disponível para testes.
     ApplicationContainer.registerLazySingleton<WineDatasource>(
-      () => WineMockDatasource(),
+      () => WineRemoteDatasource(ApplicationContainer.resolve<WineApiService>()),
     );
 
     // ── Repositories ──
@@ -150,6 +220,9 @@ class VinumContainer {
     );
     ApplicationContainer.registerLazySingleton<GetWineById>(
       () => GetWineById(ApplicationContainer.resolve<WineRepository>()),
+    );
+    ApplicationContainer.registerLazySingleton<GetWineHighlights>(
+      () => GetWineHighlights(ApplicationContainer.resolve<WineRepository>()),
     );
 
     // ── Reviews ──
@@ -181,15 +254,85 @@ class VinumContainer {
       () => DeleteReview(ApplicationContainer.resolve<ReviewRepository>()),
     );
 
+    // ── Home: Recomendações ──
+    ApplicationContainer.registerLazySingleton<RecommendationRepository>(
+      () => RecommendationRepositoryImpl(
+        ApplicationContainer.resolve<RecommendationApiService>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<GetRecommendations>(
+      () => GetRecommendations(
+        ApplicationContainer.resolve<RecommendationRepository>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<GetFoodRecommendations>(
+      () => GetFoodRecommendations(
+        ApplicationContainer.resolve<RecommendationRepository>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<GetWineMatch>(
+      () => GetWineMatch(
+        ApplicationContainer.resolve<RecommendationRepository>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<SearchWines>(
+      () => SearchWines(
+        ApplicationContainer.resolve<RecommendationRepository>(),
+      ),
+    );
+
     // ── BLoCs ──
     ApplicationContainer.registerFactory<HomeBloc>(
-      () => HomeBloc(ApplicationContainer.resolve<AuthRepository>()),
+      () => HomeBloc(
+        ApplicationContainer.resolve<AuthRepository>(),
+        ApplicationContainer.resolve<GetRecommendations>(),
+        ApplicationContainer.resolve<Logout>(),
+        ApplicationContainer.resolve<LoadFavoriteIds>(),
+        ApplicationContainer.resolve<SetFavorite>(),
+        ApplicationContainer.resolve<WatchFavoriteIds>(),
+        ApplicationContainer.resolve<GetWineHighlights>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<SearchBloc>(
+      () => SearchBloc(
+        ApplicationContainer.resolve<SearchWines>(),
+        ApplicationContainer.resolve<Logout>(),
+        ApplicationContainer.resolve<SetFavorite>(),
+        ApplicationContainer.resolve<WatchFavoriteIds>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<FoodWinesBloc>(
+      () => FoodWinesBloc(
+        ApplicationContainer.resolve<GetFoodRecommendations>(),
+        ApplicationContainer.resolve<Logout>(),
+        ApplicationContainer.resolve<SetFavorite>(),
+        ApplicationContainer.resolve<WatchFavoriteIds>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<FavoritesListBloc>(
+      () => FavoritesListBloc(
+        ApplicationContainer.resolve<GetFavorites>(),
+        ApplicationContainer.resolve<SetFavorite>(),
+        ApplicationContainer.resolve<WatchFavoriteIds>(),
+        ApplicationContainer.resolve<Logout>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<WineFavoriteBloc>(
+      () => WineFavoriteBloc(
+        ApplicationContainer.resolve<LoadFavoriteIds>(),
+        ApplicationContainer.resolve<SetFavorite>(),
+        ApplicationContainer.resolve<WatchFavoriteIds>(),
+        ApplicationContainer.resolve<Logout>(),
+      ),
     );
     ApplicationContainer.registerFactory<WineListBloc>(
       () => WineListBloc(ApplicationContainer.resolve<GetWines>()),
     );
     ApplicationContainer.registerFactory<WineDetailBloc>(
       () => WineDetailBloc(ApplicationContainer.resolve<GetWineById>()),
+    );
+    ApplicationContainer.registerFactory<WineMatchBloc>(
+      () => WineMatchBloc(ApplicationContainer.resolve<GetWineMatch>()),
     );
     ApplicationContainer.registerFactory<ReviewListBloc>(
       () => ReviewListBloc(ApplicationContainer.resolve<GetWineReviews>()),
@@ -203,43 +346,19 @@ class VinumContainer {
       ),
     );
 
-    // ── Explore Feature ──
-    ApplicationContainer.registerLazySingleton<ExploreDatasource>(
-      () => ExploreMockDatasource(),
-    );
-    ApplicationContainer.registerLazySingleton<ExploreRepository>(
-      () => ExploreRepositoryImpl(
-        ApplicationContainer.resolve<ExploreDatasource>(),
-      ),
-    );
-    ApplicationContainer.registerLazySingleton<GetExploreItems>(
-      () => GetExploreItems(
-        ApplicationContainer.resolve<ExploreRepository>(),
-      ),
-    );
-    ApplicationContainer.registerFactory<ExploreBloc>(
-      () => ExploreBloc(
-        ApplicationContainer.resolve<GetExploreItems>(),
-      ),
-    );
-
-    // ── Cellar Feature ──
-    ApplicationContainer.registerLazySingleton<CellarDatasource>(
-      () => CellarMockDatasource(),
-    );
+    // ── Cellar Feature ("Minha adega" = avaliações do usuário) ──
     ApplicationContainer.registerLazySingleton<CellarRepository>(
       () => CellarRepositoryImpl(
-        ApplicationContainer.resolve<CellarDatasource>(),
+        ApplicationContainer.resolve<CellarApiService>(),
       ),
     );
-    ApplicationContainer.registerLazySingleton<GetCellarItems>(
-      () => GetCellarItems(
-        ApplicationContainer.resolve<CellarRepository>(),
-      ),
+    ApplicationContainer.registerLazySingleton<GetMyReviews>(
+      () => GetMyReviews(ApplicationContainer.resolve<CellarRepository>()),
     );
     ApplicationContainer.registerFactory<CellarBloc>(
       () => CellarBloc(
-        ApplicationContainer.resolve<GetCellarItems>(),
+        ApplicationContainer.resolve<GetMyReviews>(),
+        ApplicationContainer.resolve<Logout>(),
       ),
     );
 

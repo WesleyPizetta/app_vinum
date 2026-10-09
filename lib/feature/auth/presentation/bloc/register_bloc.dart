@@ -25,7 +25,10 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
     );
     result.fold(
       (failure) => emit(RegisterError(message: _mapFailureMessage(failure))),
-      (user) => emit(RegisterSuccess(user: user)),
+      (result) => emit(RegisterSuccess(
+        user: result.user,
+        requiresEmailConfirmation: result.requiresEmailConfirmation,
+      )),
     );
   }
 

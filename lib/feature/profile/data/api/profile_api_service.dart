@@ -11,4 +11,12 @@ abstract class ProfileApiService extends ChopperService {
   Future<Response<dynamic>> getMyProfile({
     @Header('Authorization') required String authorization,
   });
+
+  @GET(path: '/onboarding/quiz')
+  Future<Response<dynamic>> getOnboardingQuiz();
+
+  @POST(path: '/onboarding/quiz/submit')
+  Future<Response<dynamic>> submitOnboardingQuiz(
+    @Body() Map<String, dynamic> body,
+  );
 }
