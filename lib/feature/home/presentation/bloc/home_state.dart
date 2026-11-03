@@ -56,6 +56,7 @@ class HomeLoaded extends HomeState {
   });
 
   HomeLoaded copyWith({
+    User? currentUser,
     List<RecommendedWine>? recommendations,
     RecommendationsStatus? recommendationsStatus,
     String? recommendationsErrorMessage,
@@ -66,7 +67,7 @@ class HomeLoaded extends HomeState {
   }) {
     return HomeLoaded(
       welcomeMessage: welcomeMessage,
-      currentUser: currentUser,
+      currentUser: currentUser ?? this.currentUser,
       recommendations: recommendations ?? this.recommendations,
       recommendationsStatus:
           recommendationsStatus ?? this.recommendationsStatus,

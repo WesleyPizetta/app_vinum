@@ -8,10 +8,14 @@ class SignUpParams {
   final String password;
   final String name;
 
+  /// Apelido (@handle) já normalizado, salvo nos metadados do usuário.
+  final String? nickname;
+
   const SignUpParams({
     required this.email,
     required this.password,
     required this.name,
+    this.nickname,
   });
 }
 
@@ -25,5 +29,6 @@ class SignUp implements UseCase<SignUpResult, SignUpParams> {
         email: params.email,
         password: params.password,
         name: params.name,
+        nickname: params.nickname,
       );
 }

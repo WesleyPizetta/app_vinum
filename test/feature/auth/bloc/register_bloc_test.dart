@@ -12,6 +12,8 @@ import 'package:vinum/feature/auth/presentation/bloc/register_state.dart';
 class MockSignUp extends Mock implements SignUp {}
 
 const _tUser = User(id: '2', email: 'new@example.com', name: 'New User');
+const _tSignUpResult =
+    SignUpResult(user: _tUser, requiresEmailConfirmation: false);
 
 void main() {
   late MockSignUp mockSignUp;
@@ -30,9 +32,8 @@ void main() {
     blocTest<RegisterBloc, RegisterState>(
       'emite [RegisterLoading, RegisterSuccess] em caso de sucesso',
       build: () {
-        when(() => mockSignUp(any())).thenAnswer((_) async => Try.success(
-              const SignUpResult(user: _tUser, requiresEmailConfirmation: false),
-            ));
+        when(() => mockSignUp(any()))
+            .thenAnswer((_) async => Try.success(_tSignUpResult));
         return RegisterBloc(mockSignUp);
       },
       act: (bloc) => bloc.add(
@@ -40,6 +41,7 @@ void main() {
           name: 'New User',
           email: 'new@example.com',
           password: '123456',
+          nickname: 'new_user',
         ),
       ),
       expect: () => [
@@ -63,6 +65,7 @@ void main() {
           name: 'New User',
           email: 'new@example.com',
           password: '123456',
+          nickname: 'new_user',
         ),
       ),
       expect: () => [
@@ -88,6 +91,7 @@ void main() {
           name: 'Test User',
           email: 'existing@example.com',
           password: '123456',
+          nickname: 'new_user',
         ),
       ),
       expect: () => [
@@ -116,6 +120,7 @@ void main() {
           name: 'Test',
           email: 'test@example.com',
           password: '123',
+          nickname: 'test',
         ),
       ),
       expect: () => [
@@ -142,6 +147,7 @@ void main() {
           name: 'Test',
           email: 'test@example.com',
           password: '123456',
+          nickname: 'new_user',
         ),
       ),
       expect: () => [
@@ -149,6 +155,76 @@ void main() {
         isA<RegisterError>()
             .having((s) => s.message, 'message', 'error_generic'),
       ],
+    );
+  });
+
+  group('RegisterSubmitted - apelido', () {
+    blocTest<RegisterBloc, RegisterState>(
+      'envia o apelido normalizado (sem "@", minúsculo) ao cadastro',
+      build: () {
+        when(() => mockSignUp(any()))
+            .thenAnswer((_) async => Try.success(_tSignUpResult));
+        return RegisterBloc(mockSignUp);
+      },
+      act: (bloc) => bloc.add(
+        RegisterSubmitted(
+          name: 'Wes Pizetta',
+          email: 'wes@example.com',
+          password: '123456',
+          nickname: '  @Wes_Pizetta ',
+        ),
+      ),
+      expect: () => [isA<RegisterLoading>(), isA<RegisterSuccess>()],
+      verify: (_) {
+        final params = verify(() => mockSignUp(captureAny()))
+            .captured
+            .single as SignUpParams;
+        expect(params.nickname, 'wes_pizetta');
+        expect(params.name, 'Wes Pizetta');
+        expect(params.email, 'wes@example.com');
+      },
+    );
+
+    blocTest<RegisterBloc, RegisterState>(
+      'apelido inválido emite RegisterError sem chamar o cadastro',
+      build: () => RegisterBloc(mockSignUp),
+      act: (bloc) => bloc.add(
+        RegisterSubmitted(
+          name: 'Jo',
+          email: 'jo@example.com',
+          password: '123456',
+          nickname: 'jo',
+        ),
+      ),
+      expect: () => [
+        isA<RegisterError>().having(
+          (s) => s.message,
+          'message',
+          'nickname_error_too_short',
+        ),
+      ],
+      verify: (_) => verifyNever(() => mockSignUp(any())),
+    );
+
+    blocTest<RegisterBloc, RegisterState>(
+      'apelido vazio emite RegisterError de apelido obrigatório',
+      build: () => RegisterBloc(mockSignUp),
+      act: (bloc) => bloc.add(
+        RegisterSubmitted(
+          name: 'Ana',
+          email: 'ana@example.com',
+          password: '123456',
+          nickname: '',
+        ),
+      ),
+      expect: () => [
+        isA<RegisterError>().having(
+          (s) => s.message,
+          'message',
+          'nickname_error_required',
+        ),
+      ],
+      verify: (_) => verifyNever(() => mockSignUp(any())),
     );
   });
 }

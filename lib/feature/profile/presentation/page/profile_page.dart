@@ -8,9 +8,30 @@ import '../../../auth/presentation/page/onboarding_args.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
+import 'nickname_args.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  /// Apelido alterado nesta visita: ao sair, o perfil devolve `true` para
+  /// quem o abriu (ex.: home, via `UserAvatarButton.onProfileUpdated`)
+  /// recarregar a saudação.
+  bool _profileUpdated = false;
+
+  void _onNicknameChanged() {
+    if (!mounted) return;
+    setState(() => _profileUpdated = true);
+  }
+
+  /// Voltar (seta da app bar ou botão do sistema).
+  void _close() {
+    Navigator.of(context).pop(_profileUpdated ? true : null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,32 +48,45 @@ class ProfilePage extends StatelessWidget {
             );
           }
         },
-        child: Scaffold(
-          appBar: VinumAppBar(
-            title: getString(context, 'profile'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.settings),
-                tooltip: getString(context, 'settings'),
-                onPressed: () =>
-                    Navigator.pushNamed(context, ApplicationRoute.settings),
-              ),
-            ],
-          ),
-          body: BlocBuilder<ProfileBloc, ProfileState>(
-            builder: (context, state) {
-              return switch (state) {
-                ProfileInitial() => const SizedBox.shrink(),
-                ProfileLoaded(:final user) => _ProfileContent(user: user),
-                ProfileLoggingOut() => const LoadingWidget(message: null),
-                ProfileLoggedOut() => const SizedBox.shrink(),
-                ProfileError(:final message) => VinumErrorWidget(
-                    message: getString(context, message),
-                    onRetry: () =>
-                        context.read<ProfileBloc>().add(ProfileStarted()),
-                  ),
-              };
-            },
+        child: PopScope(
+          // Depois de alterar o apelido, o voltar do sistema também devolve
+          // `true` (ver [_close]).
+          canPop: !_profileUpdated,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) return;
+            _close();
+          },
+          child: Scaffold(
+            appBar: VinumAppBar(
+              title: getString(context, 'profile'),
+              onBackPressed: _close,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  tooltip: getString(context, 'settings'),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, ApplicationRoute.settings),
+                ),
+              ],
+            ),
+            body: BlocBuilder<ProfileBloc, ProfileState>(
+              builder: (context, state) {
+                return switch (state) {
+                  ProfileInitial() => const SizedBox.shrink(),
+                  ProfileLoaded(:final user) => _ProfileContent(
+                      user: user,
+                      onNicknameChanged: _onNicknameChanged,
+                    ),
+                  ProfileLoggingOut() => const LoadingWidget(message: null),
+                  ProfileLoggedOut() => const SizedBox.shrink(),
+                  ProfileError(:final message) => VinumErrorWidget(
+                      message: getString(context, message),
+                      onRetry: () =>
+                          context.read<ProfileBloc>().add(ProfileStarted()),
+                    ),
+                };
+              },
+            ),
           ),
         ),
       ),
@@ -63,11 +97,17 @@ class ProfilePage extends StatelessWidget {
 class _ProfileContent extends StatelessWidget {
   final User user;
 
-  const _ProfileContent({required this.user});
+  /// Chamado após salvar um novo apelido (a home precisa recarregar a
+  /// saudação quando o perfil for fechado).
+  final VoidCallback onNicknameChanged;
+
+  const _ProfileContent({required this.user, required this.onNicknameChanged});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Rolável: em telas pequenas o conteúdo não estoura a altura.
+    return SingleChildScrollView(
+      child: Padding(
       padding: const EdgeInsets.all(Dimens.spacing24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -93,7 +133,24 @@ class _ProfileContent extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-          const SizedBox(height: Dimens.spacing8),
+          if (user.hasNickname) ...[
+            const SizedBox(height: Dimens.spacing4),
+            Text(
+              '@${user.nickname!.trim()}',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+          Center(
+            child: TextButton.icon(
+              onPressed: () => _changeNickname(context),
+              icon: const Icon(Icons.edit_outlined, size: Dimens.iconSmall),
+              label: Text(getString(context, 'profile_change_nickname')),
+            ),
+          ),
           Text(
             user.email,
             textAlign: TextAlign.center,
@@ -101,7 +158,7 @@ class _ProfileContent extends StatelessWidget {
                   color: Theme.of(context).colorScheme.secondary,
                 ),
           ),
-          const Spacer(),
+          const SizedBox(height: Dimens.spacing32),
           SecondaryButton(
             text: getString(context, 'profile_retake_quiz'),
             onPressed: () => _retakeQuiz(context),
@@ -129,6 +186,7 @@ class _ProfileContent extends StatelessWidget {
           const SizedBox(height: Dimens.spacing24),
         ],
       ),
+    ),
     );
   }
 
@@ -148,6 +206,25 @@ class _ProfileContent extends StatelessWidget {
 
     messenger.showSnackBar(SnackBar(content: Text(successMessage)));
     if (navigator.canPop()) navigator.pop(true);
+  }
+
+  /// Abre a tela de apelido em modo edição. Ao salvar, ela volta com o novo
+  /// apelido (já gravado no usuário em cache) e o perfil é recarregado; ao
+  /// fechar o perfil, quem o abriu (ex.: home) recarrega a saudação.
+  Future<void> _changeNickname(BuildContext context) async {
+    final bloc = context.read<ProfileBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final savedMessage = getString(context, 'nickname_saved');
+
+    final result = await Navigator.of(context).pushNamed<Object?>(
+      ApplicationRoute.nickname,
+      arguments: const NicknameArgs(editMode: true),
+    );
+    if (result is! String || bloc.isClosed) return;
+
+    bloc.add(ProfileStarted());
+    onNicknameChanged();
+    messenger.showSnackBar(SnackBar(content: Text(savedMessage)));
   }
 
   String _getInitials(User user) {

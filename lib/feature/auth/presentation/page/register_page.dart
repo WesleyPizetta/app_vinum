@@ -2,6 +2,9 @@ import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/navigation/application_route.dart';
+import '../../../profile/domain/nickname_rules.dart';
+import '../../../profile/presentation/bloc/nickname_field_cubit.dart';
+import '../../../profile/presentation/widget/nickname_field.dart';
 import '../bloc/register_bloc.dart';
 import '../bloc/register_event.dart';
 import '../bloc/register_state.dart';
@@ -11,8 +14,15 @@ class RegisterPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => ApplicationContainer.resolve<RegisterBloc>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<RegisterBloc>(
+          create: (_) => ApplicationContainer.resolve<RegisterBloc>(),
+        ),
+        BlocProvider<NicknameFieldCubit>(
+          create: (_) => ApplicationContainer.resolve<NicknameFieldCubit>(),
+        ),
+      ],
       child: BlocListener<RegisterBloc, RegisterState>(
         listener: (context, state) {
           if (state is! RegisterSuccess) return;
@@ -69,10 +79,22 @@ class _RegisterFormState extends State<_RegisterForm> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _nicknameController = TextEditingController();
   bool _obscurePassword = true;
+
+  /// Enquanto o usuário não mexe no apelido, ele acompanha o nome digitado.
+  bool _nicknameEditedByUser = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(_onNameChanged);
+  }
 
   @override
   void dispose() {
+    _nameController.removeListener(_onNameChanged);
+    _nicknameController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -113,6 +135,11 @@ class _RegisterFormState extends State<_RegisterForm> {
                 }
                 return null;
               },
+            ),
+            const SizedBox(height: Dimens.spacing16),
+            NicknameField(
+              controller: _nicknameController,
+              onChanged: _onNicknameChangedByUser,
             ),
             const SizedBox(height: Dimens.spacing16),
             TextFormField(
@@ -205,13 +232,37 @@ class _RegisterFormState extends State<_RegisterForm> {
     );
   }
 
+  void _onNameChanged() {
+    if (_nicknameEditedByUser) return;
+    final suggestion = NicknameRules.suggestFromName(_nameController.text);
+    if (_nicknameController.text == suggestion) return;
+    _nicknameController.value = TextEditingValue(
+      text: suggestion,
+      selection: TextSelection.collapsed(offset: suggestion.length),
+    );
+    context.read<NicknameFieldCubit>().changed(suggestion);
+  }
+
+  void _onNicknameChangedByUser(String value) {
+    // Apagou tudo: volta a sugerir a partir do nome.
+    _nicknameEditedByUser = value.isNotEmpty;
+  }
+
   void _submit(BuildContext context) {
-    if (!_formKey.currentState!.validate()) return;
+    final formValid = _formKey.currentState!.validate();
+
+    // O apelido precisa ser válido e confirmado como disponível.
+    final nicknameCubit = context.read<NicknameFieldCubit>();
+    final nicknameState = nicknameCubit.state;
+    if (!nicknameState.isAvailable) nicknameCubit.submitAttempted();
+
+    if (!formValid || !nicknameState.isAvailable) return;
     context.read<RegisterBloc>().add(
           RegisterSubmitted(
             name: _nameController.text.trim(),
             email: _emailController.text.trim(),
             password: _passwordController.text,
+            nickname: nicknameState.nickname,
           ),
         );
   }

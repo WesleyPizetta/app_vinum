@@ -3,6 +3,7 @@ import 'package:essentials/essentials.dart';
 import '../../feature/auth/data/api/auth_api_service.dart';
 import '../../feature/auth/data/repository/auth_repository_impl.dart';
 import '../../feature/auth/domain/repository/auth_repository.dart';
+import '../../feature/auth/domain/usecase/ensure_user_nickname.dart';
 import '../../feature/auth/domain/usecase/get_onboarding_quiz.dart';
 import '../../feature/auth/domain/usecase/sign_in.dart';
 import '../../feature/auth/domain/usecase/submit_onboarding_quiz.dart';
@@ -31,6 +32,12 @@ import '../../feature/home/presentation/bloc/food_wines_bloc.dart';
 import '../../feature/home/presentation/bloc/home_bloc.dart';
 import '../../feature/home/presentation/bloc/search_bloc.dart';
 import '../../feature/profile/data/api/profile_api_service.dart';
+import '../../feature/profile/data/repository/nickname_repository_impl.dart';
+import '../../feature/profile/domain/repository/nickname_repository.dart';
+import '../../feature/profile/domain/usecase/check_nickname_availability.dart';
+import '../../feature/profile/domain/usecase/set_my_nickname.dart';
+import '../../feature/profile/presentation/bloc/nickname_field_cubit.dart';
+import '../../feature/profile/presentation/bloc/nickname_page_cubit.dart';
 import '../../feature/profile/presentation/bloc/profile_bloc.dart';
 import '../../feature/wine/data/datasource/wine_datasource.dart';
 import '../../feature/wine/data/api/wine_api_service.dart';
@@ -165,10 +172,47 @@ class VinumContainer {
         [ApplicationContainer.resolve<FavoritesRepository>()],
       ),
     );
+    // ── Apelido (@handle) ──
+    ApplicationContainer.registerLazySingleton<NicknameRepository>(
+      () => NicknameRepositoryImpl(
+        ApplicationContainer.resolve<ProfileApiService>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<CheckNicknameAvailability>(
+      () => CheckNicknameAvailability(
+        ApplicationContainer.resolve<NicknameRepository>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<SetMyNickname>(
+      () => SetMyNickname(
+        ApplicationContainer.resolve<NicknameRepository>(),
+        ApplicationContainer.resolve<AuthRepository>(),
+      ),
+    );
+    ApplicationContainer.registerLazySingleton<EnsureUserNickname>(
+      () => EnsureUserNickname(
+        ApplicationContainer.resolve<AuthRepository>(),
+        ApplicationContainer.resolve<SetMyNickname>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<NicknameFieldCubit>(
+      () => NicknameFieldCubit(
+        ApplicationContainer.resolve<CheckNicknameAvailability>(),
+      ),
+    );
+    ApplicationContainer.registerFactory<NicknamePageCubit>(
+      () => NicknamePageCubit(
+        ApplicationContainer.resolve<SetMyNickname>(),
+        ApplicationContainer.resolve<Logout>(),
+        ApplicationContainer.resolve<AuthRepository>(),
+      ),
+    );
+
     ApplicationContainer.registerFactory<LoginBloc>(
       () => LoginBloc(
         ApplicationContainer.resolve<SignIn>(),
         ApplicationContainer.resolve<AuthRepository>(),
+        ApplicationContainer.resolve<EnsureUserNickname>(),
       ),
     );
     ApplicationContainer.registerFactory<RegisterBloc>(

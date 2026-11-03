@@ -7,8 +7,9 @@ class UserAvatarButton extends StatelessWidget {
   final User? user;
 
   /// Chamado quando o perfil é fechado após uma alteração que afeta as
-  /// recomendações (ex.: quiz de paladar refeito) — a tela de perfil faz
-  /// `Navigator.pop(context, true)` nesse caso.
+  /// recomendações ou a saudação (ex.: quiz de paladar refeito ou apelido
+  /// alterado) — a tela de perfil faz `Navigator.pop(context, true)` nesses
+  /// casos.
   final VoidCallback? onProfileUpdated;
 
   const UserAvatarButton({super.key, this.user, this.onProfileUpdated});

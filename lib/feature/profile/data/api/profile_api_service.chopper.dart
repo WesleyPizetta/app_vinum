@@ -58,4 +58,32 @@ final class _$ProfileApiService extends ProfileApiService {
     );
     return client.send<dynamic, dynamic>($request);
   }
+
+  @override
+  Future<Response<dynamic>> checkNickname(String nickname) {
+    final Uri $url = Uri.parse('/v1/nicknames/check');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'nickname': nickname,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> setMyNickname(Map<String, dynamic> body) {
+    final Uri $url = Uri.parse('/v1/me/nickname');
+    final $body = body;
+    final Request $request = Request(
+      'PUT',
+      $url,
+      client.baseUrl,
+      body: $body,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
 }

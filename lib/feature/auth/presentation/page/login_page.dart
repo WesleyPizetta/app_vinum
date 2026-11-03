@@ -8,6 +8,7 @@ import '../../../../core/widgets/app_version_badge.dart';
 import '../bloc/login_bloc.dart';
 import '../bloc/login_event.dart';
 import '../bloc/login_state.dart';
+import 'post_auth_navigation.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -20,14 +21,8 @@ class LoginPage extends StatelessWidget {
       child: BlocListener<LoginBloc, LoginState>(
         listener: (context, state) {
           if (state is LoginSuccess) {
-            final targetRoute = state.user.onboardingCompleted
-                ? ApplicationRoute.home
-                : ApplicationRoute.onboarding;
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              targetRoute,
-              (_) => false,
-            );
+            // Apelido (primeiro acesso) → quiz de onboarding → home.
+            navigateAfterAuth(context, state.user);
           }
         },
         child: const Scaffold(

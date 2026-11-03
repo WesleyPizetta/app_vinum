@@ -19,10 +19,14 @@ abstract class AuthRepository {
 
   /// Cria a conta. Se o projeto exigir confirmação de e-mail, retorna
   /// `requiresEmailConfirmation = true` e NÃO inicia sessão.
+  ///
+  /// [nickname] (já normalizado) vai nos metadados do usuário (`nickname`)
+  /// e é aplicado no primeiro acesso (ver [getSignUpNickname]).
   Future<Try<SignUpResult>> signUp({
     required String email,
     required String password,
     required String name,
+    String? nickname,
   });
 
   Future<Try<void>> refreshSession();
@@ -41,6 +45,14 @@ abstract class AuthRepository {
   /// sessão no armazenamento seguro. Retorna o usuário atualizado, ou `null`
   /// se não houver usuário autenticado.
   Future<User?> markOnboardingCompleted();
+
+  /// Atualiza o apelido do usuário local e persiste a sessão. Retorna o
+  /// usuário atualizado, ou `null` se não houver usuário autenticado.
+  Future<User?> updateCurrentUserNickname(String nickname);
+
+  /// Apelido escolhido no cadastro, salvo nos metadados do usuário do
+  /// Supabase (`user_metadata.nickname`). `null` se não houver.
+  String? getSignUpNickname();
 
   Future<Try<void>> logout();
 

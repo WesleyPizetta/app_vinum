@@ -1,6 +1,7 @@
 import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/relative_time.dart';
 import '../../domain/entity/review.dart';
 import '../bloc/review_form_bloc.dart';
 import '../bloc/review_form_event.dart';
@@ -29,9 +30,12 @@ class ReviewCard extends StatelessWidget {
       return 'Você';
     }
 
-    final nome = review.usuarioNome?.trim();
-    if (nome != null && nome.isNotEmpty) {
-      return nome;
+    // `usuario_nome` agora é o apelido do autor ("" quando não definido).
+    var nickname = review.usuarioNome?.trim() ?? '';
+    if (nickname.startsWith('@')) nickname = nickname.substring(1).trim();
+    // Privacidade: apelidos nunca têm "@"; algo assim pode ser e-mail.
+    if (nickname.isNotEmpty && !nickname.contains('@')) {
+      return '@$nickname';
     }
 
     return 'Usuário';
@@ -40,8 +44,9 @@ class ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateFormatted =
-        DateFormat('dd/MM/yyyy').format(review.createdAt.toLocal());
+    final createdAt = review.createdAt.toLocal();
+    final timeAgo = relativeTimeLabel(context, createdAt);
+    final fullDate = DateFormat('dd/MM/yyyy HH:mm').format(createdAt);
 
     return Card(
       margin: const EdgeInsets.only(bottom: Dimens.spacing8),
@@ -62,7 +67,10 @@ class ReviewCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Text(dateFormatted, style: theme.textTheme.labelSmall),
+                Tooltip(
+                  message: fullDate,
+                  child: Text(timeAgo, style: theme.textTheme.labelSmall),
+                ),
                 if (_isOwner && currentToken != null) ...[
                   const SizedBox(width: Dimens.spacing4),
                   _OwnerActions(

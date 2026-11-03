@@ -68,6 +68,10 @@ class AuthRepositoryImpl implements AuthRepository {
           )) ??
           false;
 
+      final storedNickname = JsonUtils.readString(
+        await _secureStorage.read(key: 'auth_user_nickname'),
+      );
+
       // O usuário pode ter sido criado antes a partir da sessão do Supabase
       // (sem o flag de onboarding). Não perde o "onboarding concluído" salvo.
       final existing = _currentUser;
@@ -76,6 +80,14 @@ class AuthRepositoryImpl implements AuthRepository {
           storedOnboarding &&
           !existing.onboardingCompleted) {
         _currentUser = existing.copyWith(onboardingCompleted: true);
+      }
+      // Idem para o apelido salvo.
+      final withOnboarding = _currentUser;
+      if (withOnboarding != null &&
+          withOnboarding.id == id &&
+          storedNickname != null &&
+          !withOnboarding.hasNickname) {
+        _currentUser = withOnboarding.copyWith(nickname: storedNickname);
       }
 
       if (_currentUser == null) {
@@ -89,6 +101,7 @@ class AuthRepositoryImpl implements AuthRepository {
             name: name,
             avatarUrl: avatar,
             onboardingCompleted: storedOnboarding,
+            nickname: storedNickname,
           );
         }
       }
@@ -136,12 +149,19 @@ class AuthRepositoryImpl implements AuthRepository {
           key: 'auth_user_onboarding_completed',
           value: _currentUser!.onboardingCompleted.toString(),
         );
+        if (_currentUser!.hasNickname) {
+          await _secureStorage.write(
+              key: 'auth_user_nickname', value: _currentUser!.nickname!);
+        } else {
+          await _secureStorage.delete(key: 'auth_user_nickname');
+        }
       } else {
         await _secureStorage.delete(key: 'auth_user_id');
         await _secureStorage.delete(key: 'auth_user_email');
         await _secureStorage.delete(key: 'auth_user_name');
         await _secureStorage.delete(key: 'auth_user_avatar_url');
         await _secureStorage.delete(key: 'auth_user_onboarding_completed');
+        await _secureStorage.delete(key: 'auth_user_nickname');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -158,6 +178,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await _secureStorage.delete(key: 'auth_user_email');
       await _secureStorage.delete(key: 'auth_user_name');
       await _secureStorage.delete(key: 'auth_user_avatar_url');
+      await _secureStorage.delete(key: 'auth_user_nickname');
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[AuthRepository] Erro ao limpar sessão segura: $e');
@@ -242,6 +263,7 @@ class AuthRepositoryImpl implements AuthRepository {
         avatarUrl: _readString(userMap['avatar_url']),
         onboardingCompleted:
             _readBool(userMap['onboarding_completed']) ?? false,
+        nickname: _readString(userMap['nickname']),
       );
       _currentUser = user;
       await _warmUpProfileForAvatar();
@@ -260,12 +282,17 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
     required String name,
+    String? nickname,
   }) async {
     try {
       final response = await _client.auth.signUp(
         email: email,
         password: password,
-        data: {'name': name},
+        data: {
+          'name': name,
+          if (nickname != null && nickname.trim().isNotEmpty)
+            'nickname': nickname.trim(),
+        },
       );
       final supaUser = response.user;
       if (supaUser == null) {
@@ -390,6 +417,28 @@ class AuthRepositoryImpl implements AuthRepository {
     _currentUser = user.copyWith(onboardingCompleted: true);
     await _saveLocalSession();
     return _currentUser;
+  }
+
+  @override
+  Future<User?> updateCurrentUserNickname(String nickname) async {
+    final user = getCurrentUser();
+    if (user == null) return null;
+    _currentUser = user.copyWith(nickname: nickname);
+    await _saveLocalSession();
+    return _currentUser;
+  }
+
+  @override
+  String? getSignUpNickname() {
+    try {
+      return _readString(_client.auth.currentUser?.userMetadata?['nickname']);
+    } catch (e) {
+      // Ex.: Supabase não inicializado (testes) ou sessão só do BFF.
+      if (kDebugMode) {
+        debugPrint('[AuthRepository] sem metadados de apelido: $e');
+      }
+      return null;
+    }
   }
 
   /// Traduz o status HTTP de uma resposta de onboarding para um
@@ -560,6 +609,11 @@ class AuthRepositoryImpl implements AuthRepository {
         avatarUrl: _readString(body['avatar_url']) ?? current.avatarUrl,
         onboardingCompleted: _readBool(body['onboarding_completed']) ??
             current.onboardingCompleted,
+        // `null`/"" = usuário ainda sem apelido (dispara a tela de apelido).
+        // Campo ausente (BFF antigo): mantém o que já se sabia.
+        nickname: body.containsKey('nickname')
+            ? _readString(body['nickname'])
+            : current.nickname,
       );
       await _saveLocalSession();
     } catch (e) {

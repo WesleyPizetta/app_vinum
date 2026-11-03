@@ -61,8 +61,14 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   /// alterado em outras telas. Retries não criam novas assinaturas.
   Future<void> _onStarted(HomeStarted event, Emitter<HomeState> emit) async {
     final previous = state;
+    // Ex.: apelido alterado no perfil -> saudação com o usuário atualizado.
+    final refreshedUser =
+        event.refreshUser ? _authRepository.getCurrentUser() : null;
     if (previous is HomeLoaded &&
         previous.recommendationsStatus == RecommendationsStatus.loading) {
+      if (refreshedUser != null) {
+        emit(previous.copyWith(currentUser: refreshedUser));
+      }
       return; // já carregando
     }
 
@@ -76,6 +82,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
     emit(previous is HomeLoaded
         ? previous.copyWith(
+            currentUser: refreshedUser,
             recommendationsStatus: RecommendationsStatus.loading,
             clearRecommendationsError: true,
           )

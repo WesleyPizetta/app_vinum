@@ -7,6 +7,7 @@ import 'feature/auth/presentation/page/onboarding_page.dart';
 import 'feature/auth/presentation/page/register_page.dart';
 import 'feature/home/presentation/page/food_wines_page.dart';
 import 'feature/home/presentation/page/home_page.dart';
+import 'feature/profile/presentation/page/nickname_page.dart';
 import 'feature/profile/presentation/page/profile_page.dart';
 import 'feature/settings/presentation/bloc/settings_bloc.dart';
 import 'feature/settings/presentation/bloc/settings_event.dart';
@@ -56,6 +57,7 @@ class VinumApp extends StatelessWidget {
               ApplicationRoute.register: (_) => const RegisterPage(),
               ApplicationRoute.home: (_) => const HomePage(),
               ApplicationRoute.onboarding: (_) => const OnboardingPage(),
+              ApplicationRoute.nickname: (_) => const NicknamePage(),
               ApplicationRoute.settings: (_) => const SettingsPage(),
               ApplicationRoute.wineList: (_) => const WineListPage(),
               ApplicationRoute.wineDetail: (_) => const WineDetailPage(),

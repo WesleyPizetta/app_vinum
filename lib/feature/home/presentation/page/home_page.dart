@@ -143,9 +143,11 @@ class _HomePageState extends State<HomePage> {
                   final user = state is HomeLoaded ? state.currentUser : null;
                   return UserAvatarButton(
                     user: user,
-                    // Refazer o quiz pelo perfil muda o gosto: recarrega a home.
-                    onProfileUpdated: () =>
-                        context.read<HomeBloc>().add(HomeStarted()),
+                    // Refazer o quiz ou trocar o apelido pelo perfil:
+                    // recarrega a home (e a saudação).
+                    onProfileUpdated: () => context
+                        .read<HomeBloc>()
+                        .add(HomeStarted(refreshUser: true)),
                   );
                 },
               ),

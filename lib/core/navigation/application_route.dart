@@ -5,6 +5,9 @@ class ApplicationRoute {
   static const String register = '/register';
   static const String home = '/';
   static const String onboarding = '/onboarding';
+
+  /// "Como você quer ser chamado?" (apelido). `arguments`: `NicknameArgs`.
+  static const String nickname = '/nickname';
   static const String settings = '/settings';
   static const String wineList = '/wines';
   static const String wineDetail = '/wines/detail';

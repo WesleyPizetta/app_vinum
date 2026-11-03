@@ -1,5 +1,7 @@
 import 'package:essentials/essentials.dart';
 
+import '../../../profile/domain/nickname_rules.dart';
+import '../../../profile/presentation/widget/nickname_messages.dart';
 import '../../domain/usecase/sign_up.dart';
 import 'register_event.dart';
 import 'register_state.dart';
@@ -15,12 +17,22 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
     RegisterSubmitted event,
     Emitter<RegisterState> emit,
   ) async {
+    // A disponibilidade já foi confirmada pela tela; aqui só garante as
+    // regras locais antes de criar a conta.
+    final nickname = NicknameRules.normalize(event.nickname);
+    final nicknameError = NicknameRules.validate(nickname);
+    if (nicknameError != null) {
+      emit(RegisterError(message: nicknameMessageKey(nicknameError)));
+      return;
+    }
+
     emit(RegisterLoading());
     final result = await _signUp(
       SignUpParams(
         name: event.name,
         email: event.email,
         password: event.password,
+        nickname: nickname,
       ),
     );
     result.fold(
