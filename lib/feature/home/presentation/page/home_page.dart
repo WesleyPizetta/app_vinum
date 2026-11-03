@@ -1,6 +1,7 @@
 import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/navigation/application_route.dart';
 import '../../../auth/domain/entity/user.dart';
 import '../../../cellar/presentation/page/cellar_page.dart';
 import '../../../collections/presentation/page/collections_page.dart';
@@ -11,11 +12,12 @@ import '../../domain/entity/recommended_wine.dart';
 import '../bloc/home_bloc.dart';
 import '../bloc/home_event.dart';
 import '../bloc/home_state.dart';
+import '../widget/highlight_wine_card.dart';
 import '../widget/highlight_wines_horizontal_list.dart';
 import '../widget/home_greetings_header.dart';
 import '../widget/home_search_input.dart';
 import '../widget/meal_category_horizontal_list.dart';
-import '../widget/recommended_wines_horizontal_list.dart';
+import '../widget/recommended_wines_section.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -87,14 +89,33 @@ class _HomePageState extends State<HomePage> {
     return BlocProvider(
       create: (_) =>
           ApplicationContainer.resolve<HomeBloc>()..add(HomeStarted()),
-      child: PopScope(
-        canPop: _currentTabIndex == 0,
-        onPopInvokedWithResult: (didPop, result) {
-          if (didPop) return;
-          if (_currentTabIndex != 0) {
-            setState(() {
-              _currentTabIndex = 0;
-            });
+      child: BlocListener<HomeBloc, HomeState>(
+        listenWhen: (previous, current) =>
+            current is HomeSessionExpired ||
+            (current is HomeLoaded && current.favoriteErrorMessage != null),
+        listener: (context, state) {
+          if (state is HomeLoaded) {
+            // Falha ao favoritar (o ícone já voltou ao estado anterior).
+            final error = state.favoriteErrorMessage;
+            if (error != null) {
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(content: Text(getString(context, error))),
+                );
+            }
+            return;
+          }
+          if (state is HomeSessionExpired) {
+            // Mesmo fluxo do onboarding: logout já feito pelo bloc.
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(getString(context, state.message))),
+            );
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              ApplicationRoute.login,
+              (_) => false,
+            );
           }
         },
         child: Scaffold(
@@ -120,7 +141,14 @@ class _HomePageState extends State<HomePage> {
               BlocBuilder<HomeBloc, HomeState>(
                 builder: (context, state) {
                   final user = state is HomeLoaded ? state.currentUser : null;
-                  return UserAvatarButton(user: user);
+                  return UserAvatarButton(
+                    user: user,
+                    // Refazer o quiz ou trocar o apelido pelo perfil:
+                    // recarrega a home (e a saudação).
+                    onProfileUpdated: () => context
+                        .read<HomeBloc>()
+                        .add(HomeStarted(refreshUser: true)),
+                  );
                 },
               ),
               VinumNotificationButton(
@@ -187,18 +215,26 @@ class _HomeTabContent extends StatelessWidget {
       builder: (context, state) {
         return switch (state) {
           HomeInitial() => const SizedBox.shrink(),
-          HomeLoading() => const LoadingWidget(message: null),
+          HomeLoading() ||
+          HomeSessionExpired() =>
+            const LoadingWidget(message: null),
           HomeLoaded(
             :final welcomeMessage,
             :final currentUser,
             :final recommendations,
+            :final recommendationsStatus,
+            :final recommendationsErrorMessage,
             :final highlights,
+            :final highlightsStatus,
           ) =>
             _HomeLoadedView(
               welcomeMessage: welcomeMessage,
               currentUser: currentUser,
               recommendations: recommendations,
+              recommendationsStatus: recommendationsStatus,
+              recommendationsErrorMessage: recommendationsErrorMessage,
               highlights: highlights,
+              highlightsStatus: highlightsStatus,
             ),
           HomeError(:final message) => VinumErrorWidget(
               message: message,
@@ -214,18 +250,27 @@ class _HomeLoadedView extends StatelessWidget {
   final String welcomeMessage;
   final User? currentUser;
   final List<RecommendedWine> recommendations;
+  final RecommendationsStatus recommendationsStatus;
+  final String? recommendationsErrorMessage;
   final List<HighlightWine> highlights;
+  final HighlightsStatus highlightsStatus;
 
   const _HomeLoadedView({
     required this.welcomeMessage,
     this.currentUser,
     this.recommendations = const [],
+    this.recommendationsStatus = RecommendationsStatus.loaded,
+    this.recommendationsErrorMessage,
     this.highlights = const [],
+    this.highlightsStatus = HighlightsStatus.loaded,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Falha ou lista vazia: a seção inteira (título + lista) some.
+    final showHighlights = highlightsStatus == HighlightsStatus.loading ||
+        (highlightsStatus == HighlightsStatus.loaded && highlights.isNotEmpty);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: Dimens.spacing24),
@@ -280,34 +325,40 @@ class _HomeLoadedView extends StatelessWidget {
           ),
           const SizedBox(height: Dimens.spacing12),
 
-          Padding(
-            padding: const EdgeInsets.only(left: Dimens.spacing24),
-            child: RecommendedWinesHorizontalList(
-              recommendations: recommendations,
-            ),
+          RecommendedWinesSection(
+            status: recommendationsStatus,
+            recommendations: recommendations,
+            errorMessage: recommendationsErrorMessage,
           ),
-
-          const SizedBox(height: Dimens.spacing24),
 
           // Seção "Destaques da Semana" + Scroll Horizontal de Destaques
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Dimens.spacing24),
-            child: Text(
-              getString(context, 'home_highlights_section_title'),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
+          if (showHighlights) ...[
+            const SizedBox(height: Dimens.spacing24),
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: Dimens.spacing24),
+              child: Text(
+                getString(context, 'home_highlights_section_title'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: Dimens.spacing12),
-
-          Padding(
-            padding: const EdgeInsets.only(left: Dimens.spacing24),
-            child: HighlightWinesHorizontalList(
-              highlights: highlights,
-            ),
-          ),
+            const SizedBox(height: Dimens.spacing12),
+            if (highlightsStatus == HighlightsStatus.loading)
+              const SizedBox(
+                height: HighlightWineCard.height,
+                child: LoadingWidget(),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(left: Dimens.spacing24),
+                child: HighlightWinesHorizontalList(
+                  highlights: highlights,
+                ),
+              ),
+          ],
         ],
       ),
     );

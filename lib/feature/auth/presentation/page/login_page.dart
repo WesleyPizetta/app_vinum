@@ -1,5 +1,6 @@
 import 'package:essentials/essentials.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/navigation/application_route.dart';
@@ -7,6 +8,7 @@ import '../../../../core/widgets/app_version_badge.dart';
 import '../bloc/login_bloc.dart';
 import '../bloc/login_event.dart';
 import '../bloc/login_state.dart';
+import 'post_auth_navigation.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -14,16 +16,13 @@ class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ApplicationContainer.resolve<LoginBloc>()
-        ..add(LoginSessionChecked()),
+      create: (_) =>
+          ApplicationContainer.resolve<LoginBloc>()..add(LoginSessionChecked()),
       child: BlocListener<LoginBloc, LoginState>(
         listener: (context, state) {
           if (state is LoginSuccess) {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              ApplicationRoute.home,
-              (_) => false,
-            );
+            // Apelido (primeiro acesso) → quiz de onboarding → home.
+            navigateAfterAuth(context, state.user);
           }
         },
         child: const Scaffold(
@@ -57,6 +56,11 @@ class _LoginFormState extends State<_LoginForm> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+
+  /// Cobre o intervalo entre o toque no botão e o início do login no Bloc
+  /// (seletor de conta do Google + obtenção do idToken), quando o Bloc
+  /// ainda não está em LoginLoading.
+  bool _isGoogleLoading = false;
 
   @override
   void dispose() {
@@ -165,10 +169,23 @@ class _LoginFormState extends State<_LoginForm> {
               ),
             ),
             const SizedBox(height: Dimens.spacing12),
-            OutlinedButton.icon(
-              onPressed: () => _socialLogin(context, provider: 'google'),
-              icon: const Icon(Icons.g_mobiledata, size: 28),
-              label: const Text('Google'),
+            BlocBuilder<LoginBloc, LoginState>(
+              builder: (context, state) {
+                final isBusy = _isGoogleLoading || state is LoginLoading;
+                return OutlinedButton.icon(
+                  onPressed: isBusy
+                      ? null
+                      : () => _socialLogin(context, provider: 'google'),
+                  icon: _isGoogleLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.g_mobiledata, size: 28),
+                  label: const Text('Google'),
+                );
+              },
             ),
             const SizedBox(height: Dimens.spacing8),
             OutlinedButton.icon(
@@ -224,13 +241,23 @@ class _LoginFormState extends State<_LoginForm> {
   }
 
   Future<void> _signInWithGoogle(BuildContext context) async {
+    if (_isGoogleLoading) return;
+    setState(() => _isGoogleLoading = true);
+    try {
+      await _runGoogleSignIn(context);
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
+  Future<void> _runGoogleSignIn(BuildContext context) async {
     debugPrint('[GoogleBFF] _signInWithGoogle: iniciando fluxo');
     final env = ApplicationContainer.resolve<Environment>();
-    debugPrint('[GoogleBFF] apiUrl=${env.apiUrl}  googleWebClientId=${env.googleWebClientId.isEmpty ? '<vazio>' : env.googleWebClientId}');
+    debugPrint(
+        '[GoogleBFF] apiUrl=${env.apiUrl}  googleWebClientId=${env.googleWebClientId.isEmpty ? '<vazio>' : env.googleWebClientId}');
     final googleSignIn = GoogleSignIn(
-      serverClientId: env.googleWebClientId.isNotEmpty
-          ? env.googleWebClientId
-          : null,
+      serverClientId:
+          env.googleWebClientId.isNotEmpty ? env.googleWebClientId : null,
     );
     try {
       debugPrint('[GoogleBFF] chamando googleSignIn.signIn()...');
@@ -243,7 +270,8 @@ class _LoginFormState extends State<_LoginForm> {
       debugPrint('[GoogleBFF] conta obtida: ${account.email}');
       final auth = await account.authentication;
       final idToken = auth.idToken;
-      debugPrint('[GoogleBFF] idToken ${idToken == null ? 'é NULL' : 'obtido (${idToken.length} chars)'}');
+      debugPrint(
+          '[GoogleBFF] idToken ${idToken == null ? 'é NULL' : 'obtido (${idToken.length} chars)'}');
       if (idToken == null || !context.mounted) return;
       debugPrint('[GoogleBFF] disparando LoginSocialSubmitted ao Bloc');
       context.read<LoginBloc>().add(
@@ -251,6 +279,13 @@ class _LoginFormState extends State<_LoginForm> {
           );
     } catch (e, st) {
       debugPrint('[GoogleBFF] ERRO em _signInWithGoogle: $e\n$st');
+      if (e is PlatformException && '${e.message}'.contains('ApiException: 10')) {
+        // DEVELOPER_ERROR: o SHA-1 do keystore usado neste build não está
+        // cadastrado no Firebase/Google Cloud para com.vinum.vinum.
+        debugPrint(
+            '[GoogleBFF] ApiException 10 (DEVELOPER_ERROR): cadastre o SHA-1 do '
+            'debug.keystore desta máquina no Firebase (Android app com.vinum.vinum).');
+      }
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Falha ao iniciar Google Sign-In')),

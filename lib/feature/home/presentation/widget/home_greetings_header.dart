@@ -16,12 +16,22 @@ class HomeGreetingsHeader extends StatelessWidget {
     return 'Sommelier';
   }
 
+  /// Saudação pelo apelido ("Olá, wes_pizetta!") quando existir; senão,
+  /// pelo primeiro nome.
+  String _greetingsText(BuildContext context) {
+    final nickname = currentUser?.nickname?.trim();
+    if (nickname != null && nickname.isNotEmpty) {
+      return getString(context, 'greetings_user_nickname')
+          .replaceAll('{nickname}', nickname);
+    }
+    return getString(context, 'greetings_user')
+        .replaceAll('{name}', _getUserName());
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final userName = _getUserName();
-    final greetingsText =
-        getString(context, 'greetings_user').replaceAll('{name}', userName);
+    final greetingsText = _greetingsText(context);
 
     return Text(
       greetingsText,

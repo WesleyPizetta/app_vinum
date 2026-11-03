@@ -1,7 +1,9 @@
 import 'package:essentials/essentials.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../domain/entity/user.dart';
 import '../../domain/repository/auth_repository.dart';
+import '../../domain/usecase/ensure_user_nickname.dart';
 import '../../domain/usecase/sign_in.dart';
 import 'login_event.dart';
 import 'login_state.dart';
@@ -9,19 +11,29 @@ import 'login_state.dart';
 class LoginBloc extends Bloc<LoginEvent, LoginState> {
   final SignIn _signIn;
   final AuthRepository _authRepository;
+  final EnsureUserNickname _ensureUserNickname;
 
-  LoginBloc(this._signIn, this._authRepository) : super(LoginInitial()) {
+  LoginBloc(this._signIn, this._authRepository, this._ensureUserNickname)
+      : super(LoginInitial()) {
     on<LoginSessionChecked>(_onSessionChecked);
     on<LoginSubmitted>(_onSubmitted);
     on<LoginSocialSubmitted>(_onSocialSubmitted);
   }
 
-  void _onSessionChecked(
+  Future<void> _onSessionChecked(
     LoginSessionChecked event,
     Emitter<LoginState> emit,
-  ) {
-    final user = _authRepository.getCurrentUser();
-    if (user != null) emit(LoginSuccess(user: user));
+  ) async {
+    emit(LoginLoading());
+    // Aguarda a sessão salva ser restaurada e o perfil (onboarding) ser
+    // atualizado pela API antes de decidir entre home e quiz. Sem sessão
+    // válida (ex.: cadastro aguardando confirmação de e-mail) fica no login.
+    final user = await _authRepository.restoreSession();
+    if (user != null) {
+      emit(LoginSuccess(user: await _ensureUserNickname(user)));
+    } else {
+      emit(LoginInitial());
+    }
   }
 
   Future<void> _onSubmitted(
@@ -32,10 +44,16 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     final result = await _signIn(
       SignInParams(email: event.email, password: event.password),
     );
-    result.fold(
-      (failure) => emit(LoginError(message: _mapFailureMessage(failure))),
-      (user) => emit(LoginSuccess(user: user)),
-    );
+    // Extrai o resultado sem callbacks assíncronos dentro do fold.
+    final user = result.fold<User?>((_) => null, (u) => u);
+    if (user == null) {
+      result.fold(
+        (failure) => emit(LoginError(message: _mapFailureMessage(failure))),
+        (_) {},
+      );
+      return;
+    }
+    emit(LoginSuccess(user: await _ensureUserNickname(user)));
   }
 
   Future<void> _onSocialSubmitted(
@@ -49,16 +67,19 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       idToken: event.idToken,
       nonce: event.nonce,
     );
-    result.fold(
-      (failure) {
-        debugPrint('[GoogleBFF] Bloc: falha -> ${failure.runtimeType} | ${failure is KnownFailure ? failure.message : failure}');
-        emit(LoginError(message: _mapFailureMessage(failure)));
-      },
-      (user) {
-        debugPrint('[GoogleBFF] Bloc: sucesso -> user.id=${user.id}  email=${user.email}');
-        emit(LoginSuccess(user: user));
-      },
-    );
+    final user = result.fold<User?>((_) => null, (u) => u);
+    if (user == null) {
+      result.fold(
+        (failure) {
+          debugPrint('[GoogleBFF] Bloc: falha -> ${failure.runtimeType} | ${failure is KnownFailure ? failure.message : failure}');
+          emit(LoginError(message: _mapFailureMessage(failure)));
+        },
+        (_) {},
+      );
+      return;
+    }
+    debugPrint('[GoogleBFF] Bloc: sucesso -> user.id=${user.id}  email=${user.email}');
+    emit(LoginSuccess(user: await _ensureUserNickname(user)));
   }
 
   String _mapFailureMessage(Failure failure) {

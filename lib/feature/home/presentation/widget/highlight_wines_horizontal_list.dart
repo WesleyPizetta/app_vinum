@@ -7,7 +7,8 @@ import '../bloc/home_bloc.dart';
 import '../bloc/home_event.dart';
 import 'highlight_wine_card.dart';
 
-/// Lista horizontal contendo os "Destaques da Semana".
+/// Lista horizontal contendo os "Destaques da Semana"
+/// (`GET /v1/wines/highlights`). O toque abre o detalhe com o id real.
 /// A largura dos cards (140px) e os espaçamentos garantem que o último card visível
 /// fique parcialmente cortado na borda da tela (efeito carrossel Netflix).
 class HighlightWinesHorizontalList extends StatelessWidget {
@@ -25,7 +26,7 @@ class HighlightWinesHorizontalList extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 195,
+      height: HighlightWineCard.height,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,

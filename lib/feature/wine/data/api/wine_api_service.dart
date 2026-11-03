@@ -19,4 +19,9 @@ abstract class WineApiService extends ChopperService {
 
   @GET(path: '/{id}')
   Future<Response<dynamic>> getWineById(@Path('id') String id);
+
+  /// Destaques da semana (público): `{"week": "2026-W40", "wines": [...]}`,
+  /// com os vinhos no mesmo formato de `GET /v1/wines/{id}`.
+  @GET(path: '/highlights')
+  Future<Response<dynamic>> getHighlights({@Query('limit') int? limit});
 }

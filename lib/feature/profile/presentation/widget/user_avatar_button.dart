@@ -6,12 +6,26 @@ import '../../../auth/domain/entity/user.dart';
 class UserAvatarButton extends StatelessWidget {
   final User? user;
 
-  const UserAvatarButton({super.key, this.user});
+  /// Chamado quando o perfil é fechado após uma alteração que afeta as
+  /// recomendações ou a saudação (ex.: quiz de paladar refeito ou apelido
+  /// alterado) — a tela de perfil faz `Navigator.pop(context, true)` nesses
+  /// casos.
+  final VoidCallback? onProfileUpdated;
+
+  const UserAvatarButton({super.key, this.user, this.onProfileUpdated});
+
+  Future<void> _openProfile(BuildContext context) async {
+    final updated = await Navigator.pushNamed<Object?>(
+      context,
+      ApplicationRoute.me,
+    );
+    if (updated == true) onProfileUpdated?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      onPressed: () => Navigator.pushNamed(context, ApplicationRoute.me),
+      onPressed: () => _openProfile(context),
       icon: CircleAvatar(
         radius: 16,
         backgroundColor: user != null
